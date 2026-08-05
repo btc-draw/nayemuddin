@@ -1,0 +1,618 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PAXG/USDT — Multi-Timeframe Strategy Chart</title>
+<!-- TradingView Lightweight Charts Library -->
+<script src="https://unpkg.com/lightweight-charts@4.1.1/dist/lightweight-charts.standalone.production.js"></script>
+<style>
+  :root {
+    --bg: #0a0d12;
+    --panel: #11151c;
+    --panel-2: #161c25;
+    --line: #232b37;
+    --text: #c9d3e0;
+    --muted: #6c7686;
+    --gold: #e0b25a;
+    --gold-bright: #f3cf7f;
+    --buy: #3ecf8e;
+    --sell: #ef5b6b;
+    --sweep: #8b7cf6;
+    --vwap: #59a5e8;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'IBM Plex Mono', 'SF Mono', ui-monospace, Menlo, Consolas, monospace;
+  }
+  .wrap { max-width: 1280px; margin: 0 auto; padding: 18px 18px 30px; }
+
+  .hdr {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 14px;
+    border-bottom: 1px solid var(--line);
+    padding-bottom: 14px;
+    margin-bottom: 14px;
+  }
+  .hdr-left { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+  .ticker { font-size: 22px; letter-spacing: 0.5px; color: var(--gold-bright); font-weight: 600; }
+  
+  /* Timeframe selector styling */
+  .tf-selector { display: flex; gap: 4px; background: var(--panel-2); padding: 3px; border-radius: 6px; border: 1px solid var(--line); }
+  .tf-btn {
+    font-size: 12px;
+    color: var(--muted);
+    background: transparent;
+    border: none;
+    padding: 4px 10px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-family: inherit;
+    font-weight: 600;
+    transition: all 0.15s ease;
+  }
+  .tf-btn:hover { color: var(--text); }
+  .tf-btn.active { color: #0a0d12; background: var(--gold); }
+
+  .price { font-size: 26px; font-weight: 600; color: var(--text); }
+  .chg { font-size: 13px; padding: 2px 6px; border-radius: 4px; }
+  .chg.up { color: var(--buy); background: rgba(62, 207, 142, 0.1); }
+  .chg.down { color: var(--sell); background: rgba(239, 91, 107, 0.1); }
+
+  .hdr-right { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
+  .badge {
+    font-size: 11px;
+    padding: 4px 9px;
+    border-radius: 3px;
+    letter-spacing: 0.4px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .badge.live { color: #0a0d12; background: var(--buy); }
+  .badge.sim { color: #0a0d12; background: var(--gold); }
+  .badge.connecting { color: var(--muted); background: var(--panel-2); border: 1px solid var(--line); }
+  .pulse { width: 7px; height: 7px; border-radius: 50%; background: #0a0d12; animation: pulse 1.4s infinite; }
+  @keyframes pulse { 0% { opacity: 1; } 50% { opacity: .25; } 100% { opacity: 1; } }
+  .updated { font-size: 10.5px; color: var(--muted); }
+
+  .controls { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
+  .chip {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    padding: 6px 10px;
+    border: 1px solid var(--line);
+    border-radius: 20px;
+    cursor: pointer;
+    user-select: none;
+    color: var(--muted);
+    background: var(--panel);
+    transition: all .15s;
+  }
+  .chip:hover { border-color: var(--gold); }
+  .dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+
+  .panel {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    overflow: hidden;
+    position: relative;
+  }
+  #chartContainer { width: 100%; height: 560px; position: relative; }
+
+  .legend {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+    gap: 10px;
+    margin-top: 16px;
+  }
+  .leg-item { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 10px 12px; font-size: 11.5px; color: var(--muted); }
+  .leg-item .lt { display: flex; align-items: center; gap: 7px; color: var(--text); font-weight: 600; margin-bottom: 4px; font-size: 12px; }
+  .swatch { width: 14px; height: 3px; border-radius: 2px; flex-shrink: 0; }
+  .tri { width: 0; height: 0; flex-shrink: 0; }
+  .tri.up { border-left: 6px solid transparent; border-right: 6px solid transparent; border-bottom: 9px solid var(--buy); }
+  .tri.down { border-left: 6px solid transparent; border-right: 6px solid transparent; border-top: 9px solid var(--sell); }
+
+  .foot { margin-top: 16px; font-size: 11px; color: var(--muted); line-height: 1.6; border-top: 1px solid var(--line); padding-top: 12px; }
+  .foot b { color: var(--gold); }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="hdr">
+    <div class="hdr-left">
+      <div class="ticker">PAXG / USDT</div>
+      <div class="tf-selector" id="tfSelector">
+        <button class="tf-btn" data-tf="5m">5m</button>
+        <button class="tf-btn active" data-tf="15m">15m</button>
+        <button class="tf-btn" data-tf="1h">1h</button>
+        <button class="tf-btn" data-tf="4h">4h</button>
+        <button class="tf-btn" data-tf="1d">1d</button>
+      </div>
+      <div class="price" id="priceNow">—</div>
+      <div class="chg" id="priceChg">—</div>
+    </div>
+    <div class="hdr-right">
+      <div class="badge connecting" id="statusBadge"><span class="pulse"></span>CONNECTING…</div>
+      <div class="updated" id="updatedAt">—</div>
+    </div>
+  </div>
+
+  <div class="controls" id="controls"></div>
+
+  <div class="panel">
+    <div id="chartContainer"></div>
+  </div>
+
+  <div class="legend" id="legend"></div>
+
+  <div class="foot">
+    <b>How to read this:</b> Multi-timeframe interactive chart using <b>TradingView Lightweight Charts</b> connected to Binance's live WebSocket &amp; REST API. Features live volume bars, automated <b>Liquidity Sweep detection</b>, <b>Operator Footprint labels</b> (institutional accumulation/distribution wicks), and rule-based <b>BUY/SELL/SL markers</b> with <b>10-beep automated sound alerts</b>.
+  </div>
+</div>
+
+<script>
+/* ============================================================
+   CONFIG & STATE MANAGEMENT
+   ============================================================ */
+const SYMBOL = 'paxgusdt';
+let currentInterval = '15m';
+const MAX_CANDLES = 200;
+
+let candles = []; // Array of { time, open, high, low, close, volume }
+let ws = null;
+let knownSignalKeys = new Set(); // Tracks processed signals to prevent duplicate audio loops
+let isInitialLoad = true;        // Prevents audio spam on first data load
+
+// Web Audio API Context Initialization
+let audioCtx = null;
+function initAudio() {
+  if (!audioCtx) {
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  }
+  if (audioCtx.state === 'suspended') {
+    audioCtx.resume();
+  }
+}
+
+// User Interaction Listeners to enable audio Autoplay
+window.addEventListener('click', initAudio, { once: true });
+window.addEventListener('keydown', initAudio, { once: true });
+
+/* ============================================================
+   AUDIO NOTIFICATION ENGINE (10 BEEPS PER SIGNAL)
+   ============================================================ */
+function play10BeepsNotification() {
+  initAudio();
+  if (!audioCtx) return;
+
+  const totalBeeps = 10;
+  const beepDuration = 0.08; // Duration of each beep in seconds
+  const pauseDuration = 0.06; // Pause between beeps in seconds
+
+  for (let i = 0; i < totalBeeps; i++) {
+    const startTime = audioCtx.currentTime + (i * (beepDuration + pauseDuration));
+    
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(880, startTime); // 880Hz pitch (A5 tone)
+
+    // Smooth envelope attack and decay to prevent audio clicks
+    gain.gain.setValueAtTime(0, startTime);
+    gain.gain.linearRampToValueAtTime(0.25, startTime + 0.01);
+    gain.gain.exponentialRampToValueAtTime(0.001, startTime + beepDuration);
+
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+
+    osc.start(startTime);
+    osc.stop(startTime + beepDuration);
+  }
+}
+
+// Lightweight Charts instances
+let chart, candlestickSeries, volumeSeries, vwapSeries, ema9Series, ema21Series, ema50Series;
+
+/* ============================================================
+   1. LIGHTWEIGHT CHARTS INITIALIZATION
+   ============================================================ */
+const container = document.getElementById('chartContainer');
+
+function initChart() {
+  chart = LightweightCharts.createChart(container, {
+    width: container.clientWidth,
+    height: container.clientHeight,
+    layout: {
+      background: { type: 'solid', color: '#11151c' },
+      textColor: '#c9d3e0',
+      fontFamily: "'IBM Plex Mono', monospace",
+    },
+    grid: {
+      vertLines: { color: '#1a2029' },
+      horzLines: { color: '#1a2029' },
+    },
+    crosshair: {
+      mode: LightweightCharts.CrosshairMode.Normal,
+    },
+    rightPriceScale: {
+      borderColor: '#232b37',
+    },
+    timeScale: {
+      borderColor: '#232b37',
+      timeVisible: true,
+      secondsVisible: false,
+    },
+  });
+
+  // Main Candlestick Series
+  candlestickSeries = chart.addCandlestickSeries({
+    upColor: '#3ecf8e',
+    downColor: '#ef5b6b',
+    borderUpColor: '#3ecf8e',
+    borderDownColor: '#ef5b6b',
+    wickUpColor: '#3ecf8e',
+    wickDownColor: '#ef5b6b',
+  });
+
+  // Separate Volume Pane
+  volumeSeries = chart.addHistogramSeries({
+    priceFormat: { type: 'volume' },
+    priceScaleId: 'volume',
+  });
+  
+  chart.priceScale('volume').applyOptions({
+    scaleMargins: { top: 0.8, bottom: 0 },
+  });
+
+  // Moving Averages & VWAP Overlay
+  ema9Series = chart.addLineSeries({ color: '#f3cf7f', lineWidth: 1, title: 'EMA 9' });
+  ema21Series = chart.addLineSeries({ color: '#e0895a', lineWidth: 1, title: 'EMA 21' });
+  ema50Series = chart.addLineSeries({ color: '#8f6f3a', lineWidth: 2, title: 'EMA 50' });
+  vwapSeries = chart.addLineSeries({ color: '#59a5e8', lineWidth: 1, lineStyle: LightweightCharts.LineStyle.Dashed, title: 'VWAP' });
+
+  window.addEventListener('resize', () => {
+    chart.applyOptions({ width: container.clientWidth, height: container.clientHeight });
+  });
+}
+
+/* ============================================================
+   2. DATA CALCULATIONS & TECHNICAL INDICATORS
+   ============================================================ */
+function calculateEMA(data, period) {
+  if (!data || data.length === 0) return [];
+  const k = 2 / (period + 1);
+  let emaData = [];
+  let prevEMA = data[0].close;
+  
+  for (let i = 0; i < data.length; i++) {
+    const close = data[i].close;
+    prevEMA = (i === 0) ? close : (close * k) + (prevEMA * (1 - k));
+    emaData.push({ time: data[i].time, value: prevEMA });
+  }
+  return emaData;
+}
+
+function calculateVWAP(data) {
+  if (!data || data.length === 0) return [];
+  let cumPV = 0;
+  let cumVol = 0;
+  return data.map(c => {
+    const typicalPrice = (c.high + c.low + c.close) / 3;
+    cumPV += typicalPrice * c.volume;
+    cumVol += c.volume;
+    return { time: c.time, value: cumVol === 0 ? typicalPrice : cumPV / cumVol };
+  });
+}
+
+/* ============================================================
+   3. SWEEPS, OPERATOR FOOTPRINTS & MARKERS GENERATION
+   ============================================================ */
+function processMarkersAndOverlays() {
+  if (candles.length < 20) return;
+
+  const markers = [];
+  const N = candles.length;
+  let hasNewLiveSignal = false;
+
+  for (let i = 5; i < N; i++) {
+    const c = candles[i];
+    const range = c.high - c.low;
+    const body = Math.abs(c.close - c.open);
+    const upperWick = c.high - Math.max(c.open, c.close);
+    const lowerWick = Math.min(c.open, c.close) - c.low;
+
+    // 1. LIQUIDITY SWEEP DETECTION
+    let swingHigh = -Infinity, swingLow = Infinity;
+    for (let j = i - 5; j < i; j++) {
+      swingHigh = Math.max(swingHigh, candles[j].high);
+      swingLow = Math.min(swingLow, candles[j].low);
+    }
+
+    const sweptHigh = c.high > swingHigh && c.close < swingHigh;
+    const sweptLow = c.low < swingLow && c.close > swingLow;
+
+    if (sweptHigh) {
+      markers.push({
+        time: c.time,
+        position: 'aboveBar',
+        color: '#8b7cf6',
+        shape: 'circle',
+        text: 'SWEEP (Highs)'
+      });
+    } else if (sweptLow) {
+      markers.push({
+        time: c.time,
+        position: 'belowBar',
+        color: '#8b7cf6',
+        shape: 'circle',
+        text: 'SWEEP (Lows)'
+      });
+    }
+
+    // 2. OPERATOR FOOTPRINT (Institutional wick/volume absorption)
+    const isHighVolume = c.volume > (candles.slice(Math.max(0, i - 10), i).reduce((a, b) => a + b.volume, 0) / 10) * 1.8;
+    const isAbsorbedWick = (lowerWick > body * 2.2) || (upperWick > body * 2.2);
+
+    if (isHighVolume && isAbsorbedWick) {
+      const isBullishFootprint = lowerWick > upperWick;
+      markers.push({
+        time: c.time,
+        position: isBullishFootprint ? 'belowBar' : 'aboveBar',
+        color: '#e0b25a',
+        shape: 'square',
+        text: isBullishFootprint ? 'FOOTPRINT (Accum)' : 'FOOTPRINT (Distrib)'
+      });
+    }
+
+    // 3. RULE-BASED BUY / SELL / SL SIGNALS
+    if (i > 1) {
+      let signalType = null;
+      let slPrice = 0;
+
+      // BUY SETUP: Bullish Sweep OR Footprint with green close
+      if ((sweptLow || (isHighVolume && lowerWick > body * 2)) && c.close > c.open) {
+        signalType = 'BUY';
+        slPrice = (c.low * 0.999).toFixed(2);
+        markers.push({
+          time: c.time,
+          position: 'belowBar',
+          color: '#3ecf8e',
+          shape: 'arrowUp',
+          text: `BUY @ $${c.close.toFixed(1)} | SL: $${slPrice}`
+        });
+      }
+      
+      // SELL SETUP: Bearish Sweep OR Footprint with red close
+      else if ((sweptHigh || (isHighVolume && upperWick > body * 2)) && c.close < c.open) {
+        signalType = 'SELL';
+        slPrice = (c.high * 1.001).toFixed(2);
+        markers.push({
+          time: c.time,
+          position: 'aboveBar',
+          color: '#ef5b6b',
+          shape: 'arrowDown',
+          text: `SELL @ $${c.close.toFixed(1)} | SL: $${slPrice}`
+        });
+      }
+
+      // Check if signal is newly registered
+      if (signalType) {
+        const sigKey = `${c.time}_${signalType}`;
+        if (!knownSignalKeys.has(sigKey)) {
+          knownSignalKeys.add(sigKey);
+          if (!isInitialLoad) {
+            hasNewLiveSignal = true;
+          }
+        }
+      }
+    }
+  }
+
+  candlestickSeries.setMarkers(markers);
+
+  // Trigger 10-beep audio sound when a new signal fires
+  if (hasNewLiveSignal) {
+    play10BeepsNotification();
+  }
+
+  if (isInitialLoad) {
+    isInitialLoad = false;
+  }
+}
+
+function updateChartData() {
+  candlestickSeries.setData(candles.map(c => ({
+    time: c.time, open: c.open, high: c.high, low: c.low, close: c.close
+  })));
+
+  volumeSeries.setData(candles.map(c => ({
+    time: c.time,
+    value: c.volume,
+    color: c.close >= c.open ? 'rgba(62, 207, 142, 0.4)' : 'rgba(239, 91, 107, 0.4)'
+  })));
+
+  ema9Series.setData(calculateEMA(candles, 9));
+  ema21Series.setData(calculateEMA(candles, 21));
+  ema50Series.setData(calculateEMA(candles, 50));
+  vwapSeries.setData(calculateVWAP(candles));
+
+  processMarkersAndOverlays();
+  updateHeader();
+}
+
+/* ============================================================
+   4. BINANCE REST & WEBSOCKET INTEGRATION
+   ============================================================ */
+async function fetchKlines() {
+  setStatus('connecting');
+  isInitialLoad = true;
+  knownSignalKeys.clear();
+
+  try {
+    const url = `https://api.binance.com/api/v3/klines?symbol=${SYMBOL.toUpperCase()}&interval=${currentInterval}&limit=${MAX_CANDLES}`;
+    const res = await fetch(url);
+    if (!res.ok) throw new Error('Network error loading klines');
+    const raw = await res.json();
+    
+    candles = raw.map(k => ({
+      time: Math.floor(k[0] / 1000), // UNIX timestamp in seconds
+      open: parseFloat(k[1]),
+      high: parseFloat(k[2]),
+      low: parseFloat(k[3]),
+      close: parseFloat(k[4]),
+      volume: parseFloat(k[5])
+    }));
+
+    updateChartData();
+    chart.timeScale().fitContent();
+    setStatus('live');
+    connectWebSocket();
+  } catch (err) {
+    console.error('API Error:', err);
+    setStatus('sim');
+  }
+}
+
+function connectWebSocket() {
+  if (ws) {
+    ws.onclose = null; // Prevent reconnect loop when switching explicitly
+    ws.close();
+  }
+
+  const wsUrl = `wss://stream.binance.com:9443/ws/${SYMBOL}@kline_${currentInterval}`;
+  ws = new WebSocket(wsUrl);
+
+  ws.onmessage = (event) => {
+    const message = JSON.parse(event.data);
+    const k = message.k;
+    
+    const candleObj = {
+      time: Math.floor(k.t / 1000),
+      open: parseFloat(k.o),
+      high: parseFloat(k.h),
+      low: parseFloat(k.l),
+      close: parseFloat(k.c),
+      volume: parseFloat(k.v)
+    };
+
+    const lastIdx = candles.findIndex(c => c.time === candleObj.time);
+    if (lastIdx !== -1) {
+      candles[lastIdx] = candleObj;
+    } else {
+      candles.push(candleObj);
+      if (candles.length > MAX_CANDLES) candles.shift();
+    }
+
+    updateChartData();
+  };
+
+  ws.onerror = () => setStatus('sim');
+  ws.onclose = () => {
+    setTimeout(() => {
+      if (ws.readyState === WebSocket.CLOSED) connectWebSocket();
+    }, 5000);
+  };
+}
+
+function switchTimeframe(tf) {
+  if (currentInterval === tf) return;
+  currentInterval = tf;
+  
+  // Update UI button state
+  document.querySelectorAll('.tf-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.getAttribute('data-tf') === tf);
+  });
+
+  // Reload data for selected timeframe
+  fetchKlines();
+}
+
+/* ============================================================
+   5. UI CONTROLS & UPDATES
+   ============================================================ */
+function updateHeader() {
+  if (!candles.length) return;
+  const last = candles[candles.length - 1];
+  const first = candles[0];
+  
+  document.getElementById('priceNow').textContent = '$' + last.close.toFixed(2);
+  const pct = ((last.close - first.open) / first.open) * 100;
+  const chgEl = document.getElementById('priceChg');
+  chgEl.textContent = (pct >= 0 ? '+' : '') + pct.toFixed(2) + '%';
+  chgEl.className = 'chg ' + (pct >= 0 ? 'up' : 'down');
+  document.getElementById('updatedAt').textContent = 'Last update: ' + new Date().toLocaleTimeString();
+}
+
+function setStatus(state) {
+  const el = document.getElementById('statusBadge');
+  if (state === 'live') {
+    el.className = 'badge live';
+    el.innerHTML = '<span class="pulse"></span>LIVE — Binance WS (' + currentInterval + ')';
+  } else if (state === 'connecting') {
+    el.className = 'badge connecting';
+    el.innerHTML = '<span class="pulse"></span>CONNECTING…';
+  } else {
+    el.className = 'badge sim';
+    el.innerHTML = 'DISCONNECTED / API BLOCKED';
+  }
+}
+
+// Bind Timeframe Click Handlers
+document.getElementById('tfSelector').addEventListener('click', (e) => {
+  if (e.target.classList.contains('tf-btn')) {
+    switchTimeframe(e.target.getAttribute('data-tf'));
+  }
+});
+
+const strategyMeta = {
+  ema: { label: 'EMAs (9/21/50)', series: [ema9Series, ema21Series, ema50Series], color: '#f3cf7f' },
+  vwap: { label: 'VWAP Reference', series: [vwapSeries], color: '#59a5e8' },
+  volume: { label: 'Volume Pane', series: [volumeSeries], color: '#3ecf8e' }
+};
+
+const controlsEl = document.getElementById('controls');
+Object.keys(strategyMeta).forEach(key => {
+  const meta = strategyMeta[key];
+  const chip = document.createElement('div');
+  chip.className = 'chip';
+  chip.style.background = meta.color;
+  chip.style.color = '#0a0d12';
+  chip.innerHTML = `<span class="dot" style="background:#0a0d12"></span>${meta.label}`;
+  
+  let visible = true;
+  chip.addEventListener('click', () => {
+    visible = !visible;
+    meta.series.forEach(s => s.applyOptions({ visible }));
+    chip.style.background = visible ? meta.color : 'var(--panel)';
+    chip.style.color = visible ? '#0a0d12' : 'var(--muted)';
+  });
+  controlsEl.appendChild(chip);
+});
+
+document.getElementById('legend').innerHTML = `
+  <div class="leg-item"><div class="lt"><div class="tri up"></div>BUY Marker</div>Triggered on bullish wicks or sweeps with green confirmation. Displays entry price &amp; Stop-Loss (SL).</div>
+  <div class="leg-item"><div class="lt"><div class="tri down"></div>SELL Marker</div>Triggered on bearish sweeps or footprint wicks with red confirmation. Displays entry price &amp; Stop-Loss (SL).</div>
+  <div class="leg-item"><div class="lt"><span class="swatch" style="background:#8b7cf6"></span>Liquidity Sweep</div>Purple circle above/below key highs/lows where stop-liquidity is taken before price reverses.</div>
+  <div class="leg-item"><div class="lt"><span class="swatch" style="background:#e0b25a"></span>Operator Footprint</div>Gold square marking high-volume institutional absorption on candle wicks.</div>
+`;
+
+// Initialize App
+initChart();
+fetchKlines();
+</script>
+</body>
+</html>
