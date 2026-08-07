@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>PAXG/USDT — Multi-Timeframe Strategy Chart</title>
+<title>PAXG / ETH / BTC — Multi-Timeframe Strategy Dashboard</title>
 <!-- TradingView Lightweight Charts Library -->
 <script src="https://unpkg.com/lightweight-charts@4.1.1/dist/lightweight-charts.standalone.production.js"></script>
 <style>
@@ -81,6 +81,23 @@
     .chart-grid > .chart-panel:last-child { grid-column: 1 / -1; }
   }
 
+  /* Multi-symbol sections (PAXG / ETH / BTC), spaced well apart */
+  .symbol-section { margin-top: 64px; }
+  .symbol-section:first-child { margin-top: 0; }
+  .section-hdr {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 10px;
+    padding: 14px 0 12px;
+    margin-bottom: 14px;
+    border-top: 2px solid var(--line);
+    border-bottom: 1px solid var(--line);
+  }
+  .symbol-section:first-child .section-hdr { border-top: none; padding-top: 0; }
+  .section-divider-spacer { height: 8px; }
+
   .chart-panel { display: flex; flex-direction: column; }
   .panel-hdr {
     display: flex;
@@ -118,6 +135,42 @@
   }
   .sig-toggle-btn:hover { border-color: var(--gold); }
   .sig-toggle-btn.off { color: var(--muted); background: transparent; }
+  .sig-toggle-btn.strat2 { color: var(--sweep); border-color: var(--sweep); }
+  .sig-toggle-btn.strat2.off { color: var(--muted); border-color: var(--line); background: transparent; }
+  .sig-toggle-btn.strat3 { color: #59e8a5; border-color: #59e8a5; }
+  .sig-toggle-btn.strat3.off { color: var(--muted); border-color: var(--line); background: transparent; }
+  .sig-toggle-btn.fs { color: var(--gold-bright); border-color: var(--gold-bright); }
+  .sig-toggle-btn.fs.active { background: var(--gold-bright); color: #0a0d12; }
+
+  /* Fallback "pseudo-fullscreen" for contexts where the real Fullscreen API is blocked (e.g. sandboxed iframes) */
+  .chart-maximized {
+    position: fixed !important;
+    inset: 0 !important;
+    z-index: 1000;
+    width: 100vw !important;
+    height: 100vh !important;
+    margin: 0 !important;
+    border-radius: 0 !important;
+    display: flex;
+    flex-direction: column;
+  }
+  .chart-maximized .chart-container { flex: 1 1 auto; height: auto !important; }
+  .chart-maximized .panel-hdr,
+  .chart-maximized .panel-updated { flex: 0 0 auto; }
+  body.has-maximized-chart { overflow: hidden; }
+
+  /* Native Fullscreen API state */
+  .panel:fullscreen, .panel:-webkit-full-screen {
+    width: 100vw;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    background: var(--panel);
+  }
+  .panel:fullscreen .chart-container,
+  .panel:-webkit-full-screen .chart-container { flex: 1 1 auto; height: auto; }
+  .panel:fullscreen .panel-hdr, .panel:-webkit-full-screen .panel-hdr,
+  .panel:fullscreen .panel-updated, .panel:-webkit-full-screen .panel-updated { flex: 0 0 auto; }
 
   .badge {
     font-size: 10.5px;
@@ -248,28 +301,26 @@
 <div class="wrap">
 
   <div class="hdr">
-    <div class="ticker">PAXG / USDT</div>
+    <div class="ticker">Multi-Symbol Strategy Dashboard</div>
     <div class="hdr-right">
       <div class="notif-wrap">
         <div class="notif-bell" id="notifBell" title="Signal notifications">
           🔔<span class="notif-badge" id="notifBadge">0</span>
         </div>
         <div class="notif-panel" id="notifPanel">
-          <div class="notif-panel-hdr">SIGNAL NOTIFICATIONS</div>
+          <div class="notif-panel-hdr">SIGNALS · S1: 10 bips TP · S2: SL:TP 1:3 · S3: trend cascade + next liquidity</div>
           <div id="notifList"></div>
         </div>
       </div>
     </div>
   </div>
 
-  <div class="controls" id="controls"></div>
-
-  <div class="chart-grid" id="chartGrid"></div>
+  <div id="sectionsRoot"></div>
 
   <div class="legend" id="legend"></div>
 
   <div class="foot">
-    <b>How to read this:</b> Every timeframe (5m, 15m, 1h, 4h, 1d) renders as its own live chart — stacked one per row on mobile, two per row on desktop — using <b>TradingView Lightweight Charts</b> connected to Binance's live WebSocket &amp; REST API, each loading the last <b>500 candles</b>. Features live volume bars, automated <b>Liquidity Sweep detection</b>, <b>Operator Footprint labels</b> (institutional accumulation/distribution wicks), rule-based <b>BUY/SELL/SL markers</b>, and a <b>🔔 notification bell</b> that logs every new signal across all timeframes — tap any entry to jump straight to that candle on its chart.
+    <b>How to read this:</b> Each symbol below (PAXG/USDT, ETH/USDT, BTC/USDT) gets its own row of timeframe charts (5m, 15m, 1h, 4h, 1d) — stacked one per row on mobile, two per row on desktop — using <b>TradingView Lightweight Charts</b> connected to Binance's live WebSocket &amp; REST API, each loading the last <b>200 candles</b>. Features live volume bars, automated <b>Liquidity Sweep detection</b>, <b>Operator Footprint labels</b> (institutional accumulation/distribution wicks), <b>Strategy 1</b> BUY/SELL/SL markers with a fixed <b>10 bips (0.10%) take-profit</b>, <b>Strategy 2</b> (sweep/footprint + volume + EMA/VWAP confluence, fixed <b>1:3 SL:TP</b>), and <b>Strategy 3</b> — a trend cascade where each timeframe's signal direction is gated by the trend one step below it (5m→15m→1h→4h→1d: uptrend only shows BUY, downtrend only SELL), with SL/TP set to the nearest untouched liquidity pivot rather than a fixed target. All three strategies stay hidden per chart until you tap their button ("🏷️ Signals", "🎯 Strat 2", "🧭 Strat 3"), then update live. A <b>🔔 notification bell</b> logs every new signal from all three across all symbols and timeframes — tap any entry to jump straight to that candle.
   </div>
 </div>
 
@@ -277,29 +328,47 @@
 /* ============================================================
    CONFIG & STATE MANAGEMENT
    ============================================================ */
-const SYMBOL = 'paxgusdt';
+const SYMBOLS = [
+  { key: 'paxg', binance: 'paxgusdt', label: 'PAXG / USDT' },
+  { key: 'eth',  binance: 'ethusdt',  label: 'ETH / USDT'  },
+  { key: 'btc',  binance: 'btcusdt',  label: 'BTC / USDT'  }
+];
 const TIMEFRAMES = ['5m', '15m', '1h', '4h', '1d'];
 const MAX_CANDLES = 200;
+const SIGNAL_TP_BIPS = 10; // take-profit target on every BUY/SELL signal, in basis points (10 bips = 0.10%)
 
-// Per-timeframe state: candles, websocket, chart + series instances
+// Per-symbol, per-timeframe state: candles, websocket, chart + series instances
 const state = {};
-TIMEFRAMES.forEach(tf => {
-  state[tf] = {
-    candles: [],
-    ws: null,
-    chart: null,
-    container: null,
-    candlestickSeries: null,
-    volumeSeries: null,
-    vwapSeries: null,
-    ema9Series: null,
-    ema21Series: null,
-    ema50Series: null,
-    seenMarkerKeys: new Set(),
-    isInitialLoad: true,
-    showSignalText: true,
-    lastMarkers: []
-  };
+SYMBOLS.forEach(sym => {
+  state[sym.key] = {};
+  TIMEFRAMES.forEach(tf => {
+    state[sym.key][tf] = {
+      candles: [],
+      ws: null,
+      chart: null,
+      container: null,
+      candlestickSeries: null,
+      volumeSeries: null,
+      vwapSeries: null,
+      ema9Series: null,
+      ema21Series: null,
+      ema50Series: null,
+      seenMarkerKeys: new Set(),
+      isInitialLoad: true,
+      showSignalText: true,
+      lastMarkers: [],
+      // Strategy 2: confluence-based (sweep + volume + footprint + EMA/VWAP), SL:TP = 1:3, hidden until toggled on
+      strat2Markers: [],
+      strat2SeenKeys: new Set(),
+      isInitialLoadStrat2: true,
+      showStrat2: false,
+      // Strategy 3: trend cascade (lower TF direction gates this TF's signal side), SL/TP to next liquidity, hidden until toggled on
+      strat3Markers: [],
+      strat3SeenKeys: new Set(),
+      isInitialLoadStrat3: true,
+      showStrat3: false
+    };
+  });
 });
 
 // Notification system state (shared across all timeframe charts)
@@ -309,33 +378,59 @@ let unreadCount = 0;
 /* ============================================================
    1. BUILD PANELS & LIGHTWEIGHT CHARTS INITIALIZATION
    ============================================================ */
-function createPanel(tf) {
+function createSymbolSection(sym) {
+  const section = document.createElement('div');
+  section.className = 'symbol-section';
+  section.id = 'section-' + sym.key;
+  section.innerHTML = `
+    <div class="section-hdr">
+      <div class="ticker">${sym.label}</div>
+    </div>
+    <div class="controls" id="controls-${sym.key}"></div>
+    <div class="chart-grid" id="chartGrid-${sym.key}"></div>
+  `;
+  document.getElementById('sectionsRoot').appendChild(section);
+}
+
+function createPanel(symKey, tf) {
   const panel = document.createElement('div');
   panel.className = 'panel chart-panel';
-  panel.id = 'panel-' + tf;
+  panel.id = 'panel-' + symKey + '-' + tf;
   panel.innerHTML = `
     <div class="panel-hdr">
       <div class="panel-hdr-left">
         <span class="panel-tf">${tf.toUpperCase()}</span>
-        <span class="panel-price" id="price-${tf}">—</span>
-        <span class="chg" id="chg-${tf}">—</span>
+        <span class="panel-price" id="price-${symKey}-${tf}">—</span>
+        <span class="chg" id="chg-${symKey}-${tf}">—</span>
       </div>
-      <span class="badge connecting" id="status-${tf}"><span class="pulse"></span>CONNECTING…</span>
-      <button class="sig-toggle-btn" id="sigToggle-${tf}" title="Show/hide signal text on this chart">🏷️ Signals</button>
+      <span class="badge connecting" id="status-${symKey}-${tf}"><span class="pulse"></span>CONNECTING…</span>
+      <button class="sig-toggle-btn" id="sigToggle-${symKey}-${tf}" title="Show/hide signal text on this chart">🏷️ Signals</button>
+      <button class="sig-toggle-btn strat2 off" id="strat2Toggle-${symKey}-${tf}" title="Toggle Strategy 2: sweep + volume + footprint + EMA/VWAP confluence, SL:TP 1:3 — hidden until tapped">🎯 Strat 2</button>
+      <button class="sig-toggle-btn strat3 off" id="strat3Toggle-${symKey}-${tf}" title="Toggle Strategy 3: lower-timeframe trend cascade (5m→15m→1h→4h→1d), SL/TP to next liquidity — hidden until tapped">🧭 Strat 3</button>
+      <button class="sig-toggle-btn fs" id="fsToggle-${symKey}-${tf}" title="Open this chart full screen">⛶ Full</button>
     </div>
-    <div class="chart-container" id="container-${tf}"></div>
-    <div class="panel-updated" id="updated-${tf}">—</div>
+    <div class="chart-container" id="container-${symKey}-${tf}"></div>
+    <div class="panel-updated" id="updated-${symKey}-${tf}">—</div>
   `;
-  document.getElementById('chartGrid').appendChild(panel);
+  document.getElementById('chartGrid-' + symKey).appendChild(panel);
 
-  document.getElementById('sigToggle-' + tf).addEventListener('click', () => {
-    toggleSignalText(tf);
+  document.getElementById('sigToggle-' + symKey + '-' + tf).addEventListener('click', () => {
+    toggleSignalText(symKey, tf);
+  });
+  document.getElementById('strat2Toggle-' + symKey + '-' + tf).addEventListener('click', () => {
+    toggleStrat2(symKey, tf);
+  });
+  document.getElementById('strat3Toggle-' + symKey + '-' + tf).addEventListener('click', () => {
+    toggleStrat3(symKey, tf);
+  });
+  document.getElementById('fsToggle-' + symKey + '-' + tf).addEventListener('click', () => {
+    toggleFullscreen(symKey, tf);
   });
 }
 
-function initChart(tf) {
-  const s = state[tf];
-  const container = document.getElementById('container-' + tf);
+function initChart(symKey, tf) {
+  const s = state[symKey][tf];
+  const container = document.getElementById('container-' + symKey + '-' + tf);
   s.container = container;
 
   s.chart = LightweightCharts.createChart(container, {
@@ -386,13 +481,96 @@ function initChart(tf) {
   s.vwapSeries = s.chart.addLineSeries({ color: '#59a5e8', lineWidth: 1, lineStyle: LightweightCharts.LineStyle.Dashed, title: 'VWAP' });
 }
 
-window.addEventListener('resize', () => {
-  TIMEFRAMES.forEach(tf => {
-    const s = state[tf];
-    if (s.chart && s.container) {
-      s.chart.applyOptions({ width: s.container.clientWidth, height: s.container.clientHeight });
-    }
+function resizeAllCharts() {
+  SYMBOLS.forEach(sym => {
+    TIMEFRAMES.forEach(tf => {
+      const s = state[sym.key][tf];
+      if (s.chart && s.container) {
+        s.chart.applyOptions({ width: s.container.clientWidth, height: s.container.clientHeight });
+      }
+    });
   });
+}
+window.addEventListener('resize', resizeAllCharts);
+
+/* ============================================================
+   FULLSCREEN — per-chart. Tries the native Fullscreen API first;
+   if that's unavailable or blocked (common inside sandboxed
+   iframes), falls back to a fixed-position "maximized" overlay
+   driven by CSS alone, so the button always works either way.
+   ============================================================ */
+function enterPseudoFullscreen(panel) {
+  panel.classList.add('chart-maximized');
+  document.body.classList.add('has-maximized-chart');
+  setTimeout(resizeAllCharts, 30);
+  updateFsButtons();
+}
+
+function exitPseudoFullscreen(panel) {
+  panel.classList.remove('chart-maximized');
+  document.body.classList.remove('has-maximized-chart');
+  setTimeout(resizeAllCharts, 30);
+  updateFsButtons();
+}
+
+function toggleFullscreen(symKey, tf) {
+  const panel = document.getElementById('panel-' + symKey + '-' + tf);
+  if (!panel) return;
+
+  const nativeActive = document.fullscreenElement === panel || document.webkitFullscreenElement === panel;
+  const pseudoActive = panel.classList.contains('chart-maximized');
+
+  if (nativeActive) {
+    (document.exitFullscreen || document.webkitExitFullscreen).call(document);
+    return;
+  }
+  if (pseudoActive) {
+    exitPseudoFullscreen(panel);
+    return;
+  }
+
+  const req = panel.requestFullscreen || panel.webkitRequestFullscreen || panel.msRequestFullscreen;
+  if (req) {
+    try {
+      const result = req.call(panel);
+      if (result && typeof result.catch === 'function') {
+        result.catch(() => enterPseudoFullscreen(panel));
+      }
+    } catch (err) {
+      enterPseudoFullscreen(panel);
+    }
+  } else {
+    enterPseudoFullscreen(panel);
+  }
+}
+
+function updateFsButtons() {
+  SYMBOLS.forEach(sym => {
+    TIMEFRAMES.forEach(tf => {
+      const btn = document.getElementById('fsToggle-' + sym.key + '-' + tf);
+      const panel = document.getElementById('panel-' + sym.key + '-' + tf);
+      if (!btn || !panel) return;
+      const active = (document.fullscreenElement === panel) ||
+                     (document.webkitFullscreenElement === panel) ||
+                     panel.classList.contains('chart-maximized');
+      btn.innerHTML = active ? '⛶ Exit' : '⛶ Full';
+      btn.classList.toggle('active', active);
+    });
+  });
+}
+
+function handleNativeFullscreenChange() {
+  setTimeout(resizeAllCharts, 60);
+  updateFsButtons();
+}
+document.addEventListener('fullscreenchange', handleNativeFullscreenChange);
+document.addEventListener('webkitfullscreenchange', handleNativeFullscreenChange);
+
+// Escape key also exits the CSS-fallback pseudo-fullscreen (native fullscreen already handles Escape itself)
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') {
+    document.querySelectorAll('.chart-maximized').forEach(p => exitPseudoFullscreen(p));
+  }
 });
 
 /* ============================================================
@@ -427,8 +605,8 @@ function calculateVWAP(data) {
 /* ============================================================
    3. SWEEPS, OPERATOR FOOTPRINTS & MARKERS GENERATION
    ============================================================ */
-function processMarkersAndOverlays(tf) {
-  const s = state[tf];
+function processMarkersAndOverlays(symKey, tf) {
+  const s = state[symKey][tf];
   const candles = s.candles;
   if (candles.length < 20) return;
 
@@ -454,11 +632,11 @@ function processMarkersAndOverlays(tf) {
     if (sweptHigh) {
       const text = 'SWEEP (Highs)';
       markers.push({ time: c.time, position: 'aboveBar', color: '#8b7cf6', shape: 'circle', text });
-      notifyIfNew(tf, 'sweep', text, c);
+      notifyIfNew(symKey, tf, 'sweep', text, c);
     } else if (sweptLow) {
       const text = 'SWEEP (Lows)';
       markers.push({ time: c.time, position: 'belowBar', color: '#8b7cf6', shape: 'circle', text });
-      notifyIfNew(tf, 'sweep', text, c);
+      notifyIfNew(symKey, tf, 'sweep', text, c);
     }
 
     // 2. OPERATOR FOOTPRINT (Institutional wick/volume absorption)
@@ -469,62 +647,347 @@ function processMarkersAndOverlays(tf) {
       const isBullishFootprint = lowerWick > upperWick;
       const text = isBullishFootprint ? 'FOOTPRINT (Accum)' : 'FOOTPRINT (Distrib)';
       markers.push({ time: c.time, position: isBullishFootprint ? 'belowBar' : 'aboveBar', color: '#e0b25a', shape: 'square', text });
-      notifyIfNew(tf, 'footprint', text, c);
+      notifyIfNew(symKey, tf, 'footprint', text, c);
     }
 
-    // 3. RULE-BASED BUY / SELL / SL SIGNALS
+    // 3. RULE-BASED BUY / SELL / SL SIGNALS — each carries a fixed 10 bips (0.10%) take-profit target
     if (i > 1) {
       if ((sweptLow || (isHighVolume && lowerWick > body * 2)) && c.close > c.open) {
         const slPrice = (c.low * 0.999).toFixed(2);
-        const text = `BUY @ $${c.close.toFixed(1)} | SL: $${slPrice}`;
+        const tpPrice = (c.close * (1 + SIGNAL_TP_BIPS / 10000)).toFixed(2);
+        const text = `BUY @ $${c.close.toFixed(2)} | SL: $${slPrice} | TP(10bps): $${tpPrice}`;
         markers.push({ time: c.time, position: 'belowBar', color: '#3ecf8e', shape: 'arrowUp', text });
-        notifyIfNew(tf, 'buy', text, c);
+        notifyIfNew(symKey, tf, 'buy', text, c);
       }
 
       if ((sweptHigh || (isHighVolume && upperWick > body * 2)) && c.close < c.open) {
         const slPrice = (c.high * 1.001).toFixed(2);
-        const text = `SELL @ $${c.close.toFixed(1)} | SL: $${slPrice}`;
+        const tpPrice = (c.close * (1 - SIGNAL_TP_BIPS / 10000)).toFixed(2);
+        const text = `SELL @ $${c.close.toFixed(2)} | SL: $${slPrice} | TP(10bps): $${tpPrice}`;
         markers.push({ time: c.time, position: 'aboveBar', color: '#ef5b6b', shape: 'arrowDown', text });
-        notifyIfNew(tf, 'sell', text, c);
+        notifyIfNew(symKey, tf, 'sell', text, c);
       }
     }
   }
 
   s.lastMarkers = markers;
-  applyMarkerVisibility(tf);
+  renderMarkers(symKey, tf);
   s.isInitialLoad = false; // history has been processed once; future signals will alert
 }
 
 // Renders markers according to this chart's "hide signal text" toggle:
 // when off, shapes/arrows stay but the text captions are stripped.
-function applyMarkerVisibility(tf) {
-  const s = state[tf];
-  const rendered = s.showSignalText
+// Combines Strategy 1 markers (text can be hidden via the Signals toggle) with
+// Strategy 2 markers (only shown at all once the Strat 2 toggle is on), sorted by time.
+function renderMarkers(symKey, tf) {
+  const s = state[symKey][tf];
+  const main = s.showSignalText
     ? s.lastMarkers
     : s.lastMarkers.map(m => ({ ...m, text: '' }));
-  s.candlestickSeries.setMarkers(rendered);
+  const strat2 = s.showStrat2 ? s.strat2Markers : [];
+  const strat3 = s.showStrat3 ? s.strat3Markers : [];
+  const combined = [...main, ...strat2, ...strat3].sort((a, b) => a.time - b.time);
+  s.candlestickSeries.setMarkers(combined);
 }
 
-function toggleSignalText(tf) {
-  const s = state[tf];
+function toggleSignalText(symKey, tf) {
+  const s = state[symKey][tf];
   s.showSignalText = !s.showSignalText;
-  applyMarkerVisibility(tf);
-  const btn = document.getElementById('sigToggle-' + tf);
+  renderMarkers(symKey, tf);
+  const btn = document.getElementById('sigToggle-' + symKey + '-' + tf);
   btn.classList.toggle('off', !s.showSignalText);
   btn.innerHTML = s.showSignalText ? '🏷️ Signals' : '🏷️ Signals (hidden)';
 }
 
+function toggleStrat2(symKey, tf) {
+  const s = state[symKey][tf];
+  s.showStrat2 = !s.showStrat2;
+  renderMarkers(symKey, tf);
+  const btn = document.getElementById('strat2Toggle-' + symKey + '-' + tf);
+  btn.classList.toggle('off', !s.showStrat2);
+  btn.innerHTML = s.showStrat2 ? '🎯 Strat 2 (live)' : '🎯 Strat 2';
+}
+
+function toggleStrat3(symKey, tf) {
+  const s = state[symKey][tf];
+  s.showStrat3 = !s.showStrat3;
+  renderMarkers(symKey, tf);
+  const btn = document.getElementById('strat3Toggle-' + symKey + '-' + tf);
+  btn.classList.toggle('off', !s.showStrat3);
+  btn.innerHTML = s.showStrat3 ? '🧭 Strat 3 (live)' : '🧭 Strat 3';
+}
+
 /* ============================================================
-   3b. NOTIFICATION SYSTEM
+   3a-2. STRATEGY 2 — confluence engine, SL:TP = 1:3
+   Only counts: Liquidity Sweep, Volume, Operator Footprint,
+   EMA (9/21/50 stack) and VWAP (price vs VWAP) as confirmation.
+   Markers stay computed every tick but are only rendered on the
+   chart once the "🎯 Strat 2" button is tapped on (see toggleStrat2).
    ============================================================ */
-function notifyIfNew(tf, type, text, c) {
-  const s = state[tf];
+function processStrategy2(symKey, tf) {
+  const s = state[symKey][tf];
+  const candles = s.candles;
+  if (candles.length < 55) return; // need enough history for EMA50 to be meaningful
+
+  const ema9 = calculateEMA(candles, 9);
+  const ema21 = calculateEMA(candles, 21);
+  const ema50 = calculateEMA(candles, 50);
+  const vwap = calculateVWAP(candles);
+
+  const markers = [];
+  const N = candles.length;
+
+  for (let i = 5; i < N; i++) {
+    const c = candles[i];
+    const body = Math.abs(c.close - c.open);
+    const upperWick = c.high - Math.max(c.open, c.close);
+    const lowerWick = Math.min(c.open, c.close) - c.low;
+
+    // Liquidity sweep (same definition as Strategy 1)
+    let swingHigh = -Infinity, swingLow = Infinity;
+    for (let j = i - 5; j < i; j++) {
+      swingHigh = Math.max(swingHigh, candles[j].high);
+      swingLow = Math.min(swingLow, candles[j].low);
+    }
+    const sweptHigh = c.high > swingHigh && c.close < swingHigh;
+    const sweptLow = c.low < swingLow && c.close > swingLow;
+
+    // Volume + Operator Footprint
+    const avgVol = candles.slice(Math.max(0, i - 10), i).reduce((a, b) => a + b.volume, 0) / 10;
+    const isHighVolume = c.volume > avgVol * 1.8;
+    const isAbsorbedWick = (lowerWick > body * 2.2) || (upperWick > body * 2.2);
+    const bullishFootprint = isHighVolume && isAbsorbedWick && lowerWick > upperWick;
+    const bearishFootprint = isHighVolume && isAbsorbedWick && upperWick > lowerWick;
+
+    // EMA stack + VWAP position
+    const emaBullStack = ema9[i].value > ema21[i].value && ema21[i].value > ema50[i].value;
+    const emaBearStack = ema9[i].value < ema21[i].value && ema21[i].value < ema50[i].value;
+    const priceAboveVWAP = c.close > vwap[i].value;
+    const priceBelowVWAP = c.close < vwap[i].value;
+
+    // BUY: needs a liquidity event (sweep or footprint) + volume + trend confirmation (EMA or VWAP) + bullish close
+    const liquidityBuy = sweptLow || bullishFootprint;
+    const trendBuy = emaBullStack || priceAboveVWAP;
+    if (liquidityBuy && isHighVolume && trendBuy && c.close > c.open) {
+      const entry = c.close;
+      const slPrice = Math.min(c.low, entry) * 0.999;
+      const risk = entry - slPrice;
+      if (risk > 0) {
+        const tpPrice = entry + risk * 3; // 1:3 RR
+        const text = `S2 BUY @ $${entry.toFixed(2)} | SL: $${slPrice.toFixed(2)} | TP: $${tpPrice.toFixed(2)} (1:3)`;
+        markers.push({ time: c.time, position: 'belowBar', color: '#22e6c9', shape: 'arrowUp', text });
+        notifyStrat2IfNew(symKey, tf, 'buy', text, c);
+      }
+    }
+
+    // SELL: mirror logic
+    const liquiditySell = sweptHigh || bearishFootprint;
+    const trendSell = emaBearStack || priceBelowVWAP;
+    if (liquiditySell && isHighVolume && trendSell && c.close < c.open) {
+      const entry = c.close;
+      const slPrice = Math.max(c.high, entry) * 1.001;
+      const risk = slPrice - entry;
+      if (risk > 0) {
+        const tpPrice = entry - risk * 3; // 1:3 RR
+        const text = `S2 SELL @ $${entry.toFixed(2)} | SL: $${slPrice.toFixed(2)} | TP: $${tpPrice.toFixed(2)} (1:3)`;
+        markers.push({ time: c.time, position: 'aboveBar', color: '#ff6fae', shape: 'arrowDown', text });
+        notifyStrat2IfNew(symKey, tf, 'sell', text, c);
+      }
+    }
+  }
+
+  s.strat2Markers = markers;
+  renderMarkers(symKey, tf);
+  s.isInitialLoadStrat2 = false;
+}
+
+function notifyStrat2IfNew(symKey, tf, type, text, c) {
+  const s = state[symKey][tf];
+  const key = 'S2|' + c.time + '|' + text;
+  if (s.strat2SeenKeys.has(key)) return;
+  s.strat2SeenKeys.add(key);
+
+  const sym = SYMBOLS.find(x => x.key === symKey);
+  notifications.unshift({
+    id: symKey + '-' + tf + '-' + key,
+    symKey,
+    symLabel: sym ? sym.label : symKey.toUpperCase(),
+    tf,
+    type,
+    text,
+    time: c.time,
+    price: c.close,
+    createdAt: Date.now()
+  });
+  if (notifications.length > 50) notifications.length = 50;
+
+  if (!s.isInitialLoadStrat2) {
+    unreadCount++;
+    updateNotifBadge();
+  }
+  renderNotifications();
+}
+
+/* ============================================================
+   3a-3. STRATEGY 3 — trend cascade + next-liquidity SL/TP
+   Each timeframe's signal DIRECTION is gated by the trend of the
+   timeframe one step below it: 5m gates 15m, 15m gates 1h,
+   1h gates 4h, 4h gates 1d. The 5m chart itself uses its own
+   trend (there's nothing faster to cascade from). If the lower
+   timeframe is trending up, only BUY signals are shown on this
+   chart; if down, only SELL. SL/TP are not fixed — TP targets the
+   nearest untouched liquidity pivot (prior swing high/low) instead
+   of a fixed bips or RR target. Hidden per chart until toggled on.
+   ============================================================ */
+const STRAT3_REF_TF = { '5m': '5m', '15m': '5m', '1h': '15m', '4h': '1h', '1d': '4h' };
+
+// Simple trend read for a timeframe: EMA9 vs EMA21 on the latest candle.
+function getTrendDirection(symKey, tf) {
+  const s = state[symKey][tf];
+  const candles = s && s.candles;
+  if (!candles || candles.length < 25) return 'neutral';
+  const ema9 = calculateEMA(candles, 9);
+  const ema21 = calculateEMA(candles, 21);
+  const last9 = ema9[ema9.length - 1].value;
+  const last21 = ema21[ema21.length - 1].value;
+  if (last9 > last21) return 'up';
+  if (last9 < last21) return 'down';
+  return 'neutral';
+}
+
+// Confirmed swing-high/swing-low pivots (need `lookback` candles on both sides to confirm).
+function findPivots(candles, lookback) {
+  const pivotHighs = [], pivotLows = [];
+  for (let k = lookback; k < candles.length - lookback; k++) {
+    let isHigh = true, isLow = true;
+    for (let d = 1; d <= lookback; d++) {
+      if (candles[k].high <= candles[k - d].high || candles[k].high <= candles[k + d].high) isHigh = false;
+      if (candles[k].low >= candles[k - d].low || candles[k].low >= candles[k + d].low) isLow = false;
+    }
+    if (isHigh) pivotHighs.push({ index: k, price: candles[k].high });
+    if (isLow) pivotLows.push({ index: k, price: candles[k].low });
+  }
+  return { pivotHighs, pivotLows };
+}
+
+function processStrategy3(symKey, tf) {
+  const s = state[symKey][tf];
+  const candles = s.candles;
+  if (candles.length < 30) return;
+
+  const refTf = STRAT3_REF_TF[tf];
+  const trend = getTrendDirection(symKey, refTf); // trend of the lower timeframe (or self for 5m)
+
+  if (trend === 'neutral') {
+    s.strat3Markers = [];
+    renderMarkers(symKey, tf);
+    s.isInitialLoadStrat3 = false;
+    return;
+  }
+
+  const { pivotHighs, pivotLows } = findPivots(candles, 3);
+  const markers = [];
+  const N = candles.length;
+
+  for (let i = 5; i < N; i++) {
+    const c = candles[i];
+    const body = Math.abs(c.close - c.open);
+    const upperWick = c.high - Math.max(c.open, c.close);
+    const lowerWick = Math.min(c.open, c.close) - c.low;
+
+    let swingHigh = -Infinity, swingLow = Infinity;
+    for (let j = i - 5; j < i; j++) {
+      swingHigh = Math.max(swingHigh, candles[j].high);
+      swingLow = Math.min(swingLow, candles[j].low);
+    }
+    const sweptHigh = c.high > swingHigh && c.close < swingHigh;
+    const sweptLow = c.low < swingLow && c.close > swingLow;
+
+    const avgVol = candles.slice(Math.max(0, i - 10), i).reduce((a, b) => a + b.volume, 0) / 10;
+    const isHighVolume = c.volume > avgVol * 1.5;
+    const isAbsorbedWick = (lowerWick > body * 2) || (upperWick > body * 2);
+
+    if (trend === 'up') {
+      const bullishSetup = (sweptLow || (isHighVolume && isAbsorbedWick && lowerWick > upperWick)) && c.close > c.open;
+      if (bullishSetup) {
+        const entry = c.close;
+        const slPrice = Math.min(c.low, swingLow) * 0.999;
+        const nextLiquidity = pivotHighs
+          .filter(p => p.index < i && p.price > entry)
+          .sort((a, b) => a.price - b.price)[0];
+        const risk = entry - slPrice;
+        const tpPrice = nextLiquidity ? nextLiquidity.price : entry + risk * 3; // fallback if no pivot found yet
+        if (tpPrice > entry && risk > 0) {
+          const tag = nextLiquidity ? 'next liquidity' : 'no pivot found, 1:3 fallback';
+          const text = `S3 BUY @ $${entry.toFixed(2)} | SL: $${slPrice.toFixed(2)} | TP: $${tpPrice.toFixed(2)} (${tag})`;
+          markers.push({ time: c.time, position: 'belowBar', color: '#59e8a5', shape: 'arrowUp', text });
+          notifyStrat3IfNew(symKey, tf, 'buy', text, c);
+        }
+      }
+    } else if (trend === 'down') {
+      const bearishSetup = (sweptHigh || (isHighVolume && isAbsorbedWick && upperWick > lowerWick)) && c.close < c.open;
+      if (bearishSetup) {
+        const entry = c.close;
+        const slPrice = Math.max(c.high, swingHigh) * 1.001;
+        const nextLiquidity = pivotLows
+          .filter(p => p.index < i && p.price < entry)
+          .sort((a, b) => b.price - a.price)[0];
+        const risk = slPrice - entry;
+        const tpPrice = nextLiquidity ? nextLiquidity.price : entry - risk * 3; // fallback if no pivot found yet
+        if (tpPrice < entry && risk > 0) {
+          const tag = nextLiquidity ? 'next liquidity' : 'no pivot found, 1:3 fallback';
+          const text = `S3 SELL @ $${entry.toFixed(2)} | SL: $${slPrice.toFixed(2)} | TP: $${tpPrice.toFixed(2)} (${tag})`;
+          markers.push({ time: c.time, position: 'aboveBar', color: '#ff9f6f', shape: 'arrowDown', text });
+          notifyStrat3IfNew(symKey, tf, 'sell', text, c);
+        }
+      }
+    }
+  }
+
+  s.strat3Markers = markers;
+  renderMarkers(symKey, tf);
+  s.isInitialLoadStrat3 = false;
+}
+
+function notifyStrat3IfNew(symKey, tf, type, text, c) {
+  const s = state[symKey][tf];
+  const key = 'S3|' + c.time + '|' + text;
+  if (s.strat3SeenKeys.has(key)) return;
+  s.strat3SeenKeys.add(key);
+
+  const sym = SYMBOLS.find(x => x.key === symKey);
+  notifications.unshift({
+    id: symKey + '-' + tf + '-' + key,
+    symKey,
+    symLabel: sym ? sym.label : symKey.toUpperCase(),
+    tf,
+    type,
+    text,
+    time: c.time,
+    price: c.close,
+    createdAt: Date.now()
+  });
+  if (notifications.length > 50) notifications.length = 50;
+
+  if (!s.isInitialLoadStrat3) {
+    unreadCount++;
+    updateNotifBadge();
+  }
+  renderNotifications();
+}
+
+
+function notifyIfNew(symKey, tf, type, text, c) {
+  const s = state[symKey][tf];
   const key = c.time + '|' + text;
   if (s.seenMarkerKeys.has(key)) return;
   s.seenMarkerKeys.add(key);
 
+  const sym = SYMBOLS.find(x => x.key === symKey);
   notifications.unshift({
-    id: tf + '-' + key,
+    id: symKey + '-' + tf + '-' + key,
+    symKey,
+    symLabel: sym ? sym.label : symKey.toUpperCase(),
     tf,
     type,
     text,
@@ -558,10 +1021,10 @@ function renderNotifications() {
     return;
   }
   list.innerHTML = notifications.map(n => `
-    <div class="notif-item" data-tf="${n.tf}" data-time="${n.time}">
+    <div class="notif-item" data-sym="${n.symKey}" data-tf="${n.tf}" data-time="${n.time}">
       <span class="notif-dot ${n.type}"></span>
       <div class="notif-body">
-        <div class="notif-tf">${n.tf.toUpperCase()}</div>
+        <div class="notif-tf">${n.symLabel} · ${n.tf.toUpperCase()}</div>
         <div class="notif-text">${n.text}</div>
         <div class="notif-time">${new Date(n.time * 1000).toLocaleString()}</div>
       </div>
@@ -570,7 +1033,7 @@ function renderNotifications() {
 
   list.querySelectorAll('.notif-item').forEach(el => {
     el.addEventListener('click', () => {
-      jumpToTime(el.getAttribute('data-tf'), parseInt(el.getAttribute('data-time'), 10));
+      jumpToTime(el.getAttribute('data-sym'), el.getAttribute('data-tf'), parseInt(el.getAttribute('data-time'), 10));
       document.getElementById('notifPanel').classList.remove('open');
     });
   });
@@ -582,8 +1045,8 @@ function intervalToSeconds(tf) {
 }
 
 // Tap a notification -> scroll to that timeframe's panel and center its chart on that candle
-function jumpToTime(tf, targetTime) {
-  const s = state[tf];
+function jumpToTime(symKey, tf, targetTime) {
+  const s = state[symKey][tf];
   if (!s.chart) return;
   const secs = intervalToSeconds(tf);
   const half = 30;
@@ -591,7 +1054,7 @@ function jumpToTime(tf, targetTime) {
     from: targetTime - half * secs,
     to: targetTime + half * secs
   });
-  const panel = document.getElementById('panel-' + tf);
+  const panel = document.getElementById('panel-' + symKey + '-' + tf);
   if (panel) panel.scrollIntoView({ behavior: 'smooth', block: 'center' });
 }
 
@@ -612,8 +1075,8 @@ document.addEventListener('click', (e) => {
   }
 });
 
-function updateChartData(tf) {
-  const s = state[tf];
+function updateChartData(symKey, tf) {
+  const s = state[symKey][tf];
   s.candlestickSeries.setData(s.candles.map(c => ({
     time: c.time, open: c.open, high: c.high, low: c.low, close: c.close
   })));
@@ -629,22 +1092,25 @@ function updateChartData(tf) {
   s.ema50Series.setData(calculateEMA(s.candles, 50));
   s.vwapSeries.setData(calculateVWAP(s.candles));
 
-  processMarkersAndOverlays(tf);
-  updateHeader(tf);
+  processMarkersAndOverlays(symKey, tf);
+  processStrategy2(symKey, tf);
+  processStrategy3(symKey, tf);
+  updateHeader(symKey, tf);
 }
 
 /* ============================================================
    4. BINANCE REST & WEBSOCKET INTEGRATION (per timeframe)
    ============================================================ */
-async function fetchKlines(tf) {
-  setStatus(tf, 'connecting');
+async function fetchKlines(symKey, tf) {
+  const sym = SYMBOLS.find(x => x.key === symKey);
+  setStatus(symKey, tf, 'connecting');
   try {
-    const url = `https://api.binance.com/api/v3/klines?symbol=${SYMBOL.toUpperCase()}&interval=${tf}&limit=${MAX_CANDLES}`;
+    const url = `https://api.binance.com/api/v3/klines?symbol=${sym.binance.toUpperCase()}&interval=${tf}&limit=${MAX_CANDLES}`;
     const res = await fetch(url);
     if (!res.ok) throw new Error('Network error loading klines');
     const raw = await res.json();
 
-    state[tf].candles = raw.map(k => ({
+    state[symKey][tf].candles = raw.map(k => ({
       time: Math.floor(k[0] / 1000),
       open: parseFloat(k[1]),
       high: parseFloat(k[2]),
@@ -653,24 +1119,25 @@ async function fetchKlines(tf) {
       volume: parseFloat(k[5])
     }));
 
-    updateChartData(tf);
-    state[tf].chart.timeScale().fitContent();
-    setStatus(tf, 'live');
-    connectWebSocket(tf);
+    updateChartData(symKey, tf);
+    state[symKey][tf].chart.timeScale().fitContent();
+    setStatus(symKey, tf, 'live');
+    connectWebSocket(symKey, tf);
   } catch (err) {
-    console.error('API Error (' + tf + '):', err);
-    setStatus(tf, 'sim');
+    console.error('API Error (' + symKey + ' ' + tf + '):', err);
+    setStatus(symKey, tf, 'sim');
   }
 }
 
-function connectWebSocket(tf) {
-  const s = state[tf];
+function connectWebSocket(symKey, tf) {
+  const sym = SYMBOLS.find(x => x.key === symKey);
+  const s = state[symKey][tf];
   if (s.ws) {
     s.ws.onclose = null;
     s.ws.close();
   }
 
-  const wsUrl = `wss://stream.binance.com:9443/ws/${SYMBOL}@kline_${tf}`;
+  const wsUrl = `wss://stream.binance.com:9443/ws/${sym.binance}@kline_${tf}`;
   s.ws = new WebSocket(wsUrl);
 
   s.ws.onmessage = (event) => {
@@ -694,13 +1161,13 @@ function connectWebSocket(tf) {
       if (s.candles.length > MAX_CANDLES) s.candles.shift();
     }
 
-    updateChartData(tf);
+    updateChartData(symKey, tf);
   };
 
-  s.ws.onerror = () => setStatus(tf, 'sim');
+  s.ws.onerror = () => setStatus(symKey, tf, 'sim');
   s.ws.onclose = () => {
     setTimeout(() => {
-      if (s.ws.readyState === WebSocket.CLOSED) connectWebSocket(tf);
+      if (s.ws.readyState === WebSocket.CLOSED) connectWebSocket(symKey, tf);
     }, 5000);
   };
 }
@@ -708,22 +1175,22 @@ function connectWebSocket(tf) {
 /* ============================================================
    5. UI CONTROLS & UPDATES
    ============================================================ */
-function updateHeader(tf) {
-  const s = state[tf];
+function updateHeader(symKey, tf) {
+  const s = state[symKey][tf];
   if (!s.candles.length) return;
   const last = s.candles[s.candles.length - 1];
   const first = s.candles[0];
 
-  document.getElementById('price-' + tf).textContent = '$' + last.close.toFixed(2);
+  document.getElementById('price-' + symKey + '-' + tf).textContent = '$' + last.close.toFixed(2);
   const pct = ((last.close - first.open) / first.open) * 100;
-  const chgEl = document.getElementById('chg-' + tf);
+  const chgEl = document.getElementById('chg-' + symKey + '-' + tf);
   chgEl.textContent = (pct >= 0 ? '+' : '') + pct.toFixed(2) + '%';
   chgEl.className = 'chg ' + (pct >= 0 ? 'up' : 'down');
-  document.getElementById('updated-' + tf).textContent = 'Last update: ' + new Date().toLocaleTimeString();
+  document.getElementById('updated-' + symKey + '-' + tf).textContent = 'Last update: ' + new Date().toLocaleTimeString();
 }
 
-function setStatus(tf, statusVal) {
-  const el = document.getElementById('status-' + tf);
+function setStatus(symKey, tf, statusVal) {
+  const el = document.getElementById('status-' + symKey + '-' + tf);
   if (statusVal === 'live') {
     el.className = 'badge live';
     el.innerHTML = '<span class="pulse"></span>LIVE';
@@ -737,46 +1204,60 @@ function setStatus(tf, statusVal) {
 }
 
 const strategyMeta = {
-  ema: { label: 'EMAs (9/21/50)', color: '#f3cf7f', getSeries: tf => [state[tf].ema9Series, state[tf].ema21Series, state[tf].ema50Series] },
-  vwap: { label: 'VWAP Reference', color: '#59a5e8', getSeries: tf => [state[tf].vwapSeries] },
-  volume: { label: 'Volume Pane', color: '#3ecf8e', getSeries: tf => [state[tf].volumeSeries] }
+  ema: { label: 'EMAs (9/21/50)', color: '#f3cf7f', getSeries: (symKey, tf) => [state[symKey][tf].ema9Series, state[symKey][tf].ema21Series, state[symKey][tf].ema50Series] },
+  vwap: { label: 'VWAP Reference', color: '#59a5e8', getSeries: (symKey, tf) => [state[symKey][tf].vwapSeries] },
+  volume: { label: 'Volume Pane', color: '#3ecf8e', getSeries: (symKey, tf) => [state[symKey][tf].volumeSeries] }
 };
 
-const controlsEl = document.getElementById('controls');
-Object.keys(strategyMeta).forEach(key => {
-  const meta = strategyMeta[key];
-  const chip = document.createElement('div');
-  chip.className = 'chip';
-  chip.style.background = meta.color;
-  chip.style.color = '#0a0d12';
-  chip.innerHTML = `<span class="dot" style="background:#0a0d12"></span>${meta.label}`;
+function buildControls(symKey) {
+  const controlsEl = document.getElementById('controls-' + symKey);
+  Object.keys(strategyMeta).forEach(key => {
+    const meta = strategyMeta[key];
+    const chip = document.createElement('div');
+    chip.className = 'chip';
+    chip.style.background = meta.color;
+    chip.style.color = '#0a0d12';
+    chip.innerHTML = `<span class="dot" style="background:#0a0d12"></span>${meta.label}`;
 
-  let visible = true;
-  chip.addEventListener('click', () => {
-    visible = !visible;
-    TIMEFRAMES.forEach(tf => {
-      meta.getSeries(tf).forEach(series => series && series.applyOptions({ visible }));
+    let visible = true;
+    chip.addEventListener('click', () => {
+      visible = !visible;
+      TIMEFRAMES.forEach(tf => {
+        meta.getSeries(symKey, tf).forEach(series => series && series.applyOptions({ visible }));
+      });
+      chip.style.background = visible ? meta.color : 'var(--panel)';
+      chip.style.color = visible ? '#0a0d12' : 'var(--muted)';
     });
-    chip.style.background = visible ? meta.color : 'var(--panel)';
-    chip.style.color = visible ? '#0a0d12' : 'var(--muted)';
+    controlsEl.appendChild(chip);
   });
-  controlsEl.appendChild(chip);
-});
+}
 
 document.getElementById('legend').innerHTML = `
-  <div class="leg-item"><div class="lt"><div class="tri up"></div>BUY Marker</div>Triggered on bullish wicks or sweeps with green confirmation. Displays entry price &amp; Stop-Loss (SL).</div>
-  <div class="leg-item"><div class="lt"><div class="tri down"></div>SELL Marker</div>Triggered on bearish sweeps or footprint wicks with red confirmation. Displays entry price &amp; Stop-Loss (SL).</div>
+  <div class="leg-item"><div class="lt"><div class="tri up"></div>BUY Marker (Strategy 1)</div>Triggered on bullish wicks or sweeps with green confirmation. Displays entry price, Stop-Loss (SL), and a Take-Profit 10 bips (0.10%) above entry.</div>
+  <div class="leg-item"><div class="lt"><div class="tri down"></div>SELL Marker (Strategy 1)</div>Triggered on bearish sweeps or footprint wicks with red confirmation. Displays entry price, Stop-Loss (SL), and a Take-Profit 10 bips (0.10%) below entry.</div>
   <div class="leg-item"><div class="lt"><span class="swatch" style="background:#8b7cf6"></span>Liquidity Sweep</div>Purple circle above/below key highs/lows where stop-liquidity is taken before price reverses.</div>
   <div class="leg-item"><div class="lt"><span class="swatch" style="background:#e0b25a"></span>Operator Footprint</div>Gold square marking high-volume institutional absorption on candle wicks.</div>
+  <div class="leg-item"><div class="lt"><span class="swatch" style="background:#22e6c9"></span>Strategy 2 — BUY</div>Confluence of Liquidity Sweep or Footprint + high Volume + EMA(9/21/50) stack or VWAP alignment. Risk:Reward fixed at 1:3. Hidden by default — tap "🎯 Strat 2" on any chart to show it live.</div>
+  <div class="leg-item"><div class="lt"><span class="swatch" style="background:#ff6fae"></span>Strategy 2 — SELL</div>Mirror of the BUY logic on the sell side, same 1:3 SL:TP. Only rendered on-chart while "🎯 Strat 2" is toggled on for that panel.</div>
+  <div class="leg-item"><div class="lt"><span class="swatch" style="background:#59e8a5"></span>Strategy 3 — BUY</div>Only fires when the next-lower timeframe is trending up (5m→15m→1h→4h→1d cascade). SL sits at the recent swing low; TP targets the nearest untouched liquidity pivot above entry instead of a fixed target. Tap "🧭 Strat 3" to view.</div>
+  <div class="leg-item"><div class="lt"><span class="swatch" style="background:#ff9f6f"></span>Strategy 3 — SELL</div>Only fires when the next-lower timeframe is trending down. SL sits at the recent swing high; TP targets the nearest untouched liquidity pivot below entry. Tap "🧭 Strat 3" to view.</div>
 `;
 
 /* ============================================================
-   Initialize App: build a panel + chart per timeframe, then load data
+   Initialize App: build a section per symbol, a panel + chart per
+   timeframe within it, then load data. Sections render in order
+   (PAXG/USDT, ETH/USDT, BTC/USDT) with clear spacing between them.
    ============================================================ */
-TIMEFRAMES.forEach(tf => createPanel(tf));
-TIMEFRAMES.forEach(tf => initChart(tf));
+SYMBOLS.forEach(sym => {
+  createSymbolSection(sym);
+  TIMEFRAMES.forEach(tf => createPanel(sym.key, tf));
+  TIMEFRAMES.forEach(tf => initChart(sym.key, tf));
+  buildControls(sym.key);
+});
 renderNotifications();
-TIMEFRAMES.forEach(tf => fetchKlines(tf));
+SYMBOLS.forEach(sym => {
+  TIMEFRAMES.forEach(tf => fetchKlines(sym.key, tf));
+});
 </script>
 </body>
 </html>
