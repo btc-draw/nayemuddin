@@ -594,8 +594,8 @@ function scaffoldState(symKey) {
       strat3SeenKeys: new Set(),
       isInitialLoadStrat3: true,
       showStrat3: false,
-      // Strategy 4: MACD momentum cross (12/26/9) confirmed by above-average
-      // volume. SL at recent swing low/high, fixed 1:2 risk:reward TP.
+      // Strategy 4 (Liquidity): 1D/4H/1H last-candle midpoint breaks confirmed
+      // by 5m+15m follow-through, plus liquidity-sweep continuation/fade setups.
       strat4Markers: [],
       strat4SeenKeys: new Set(),
       isInitialLoadStrat4: true,
@@ -650,7 +650,7 @@ function createPanel(symKey, tf) {
       <button class="sig-toggle-btn" id="sigToggle-${symKey}-${tf}" title="Show/hide signal text on this chart">🏷️ Signals</button>
       <button class="sig-toggle-btn strat2 off" id="strat2Toggle-${symKey}-${tf}" title="Toggle Strategy 2: sweep + volume + footprint + EMA/VWAP confluence, SL:TP 1:3 — hidden until tapped">🎯 Strat 2</button>
       <button class="sig-toggle-btn strat3 off" id="strat3Toggle-${symKey}-${tf}" title="Toggle Strategy 3: lower-timeframe trend cascade (5m→15m→1h→4h→1d), SL/TP to next liquidity — hidden until tapped">🧭 Strat 3</button>
-      <button class="sig-toggle-btn strat4 off" id="strat4Toggle-${symKey}-${tf}" title="Toggle Strategy 4: MACD momentum cross confirmed by above-average volume, SL at swing high/low, TP fixed 1:2 — hidden until tapped">🌀 Strat 4</button>
+      <button class="sig-toggle-btn strat4 off" id="strat4Toggle-${symKey}-${tf}" title="Toggle Strategy 4 (Liquidity): 1D/4H/1H midpoint breaks confirmed by 5m+15m follow-through, plus liquidity-sweep continuation/fade setups — hidden until tapped">💧 Liquidity</button>
       <button class="sig-toggle-btn analyze" id="analyzeBtn-${symKey}-${tf}" title="See which of Strategies 1-3 has the best win rate over its last 5 signals on this chart, right now">🔍 Analyze</button>
       <select class="fs-switch" id="fsSwitch-${symKey}-${tf}" title="Switch symbol — stays in fullscreen, same ${tf.toUpperCase()} timeframe">
         ${SYMBOLS.map(s => `<option value="${s.key}"${s.key === symKey ? ' selected' : ''}>${s.label}</option>`).join('')}
@@ -996,11 +996,11 @@ function processMarkersAndOverlays(symKey, tf) {
     const sweptLow = c.low < swingLow && c.close > swingLow;
 
     if (sweptHigh) {
-      const text = 'SWEEP (Highs)';
+      const text = 'LQ SWEEP (H)';
       markers.push({ time: c.time, position: 'aboveBar', color: '#8b7cf6', shape: 'circle', text });
       notifyIfNew(symKey, tf, 'sweep', text, c);
     } else if (sweptLow) {
-      const text = 'SWEEP (Lows)';
+      const text = 'LQ SWEEP (L)';
       markers.push({ time: c.time, position: 'belowBar', color: '#8b7cf6', shape: 'circle', text });
       notifyIfNew(symKey, tf, 'sweep', text, c);
     }
@@ -1011,7 +1011,7 @@ function processMarkersAndOverlays(symKey, tf) {
 
     if (isHighVolume && isAbsorbedWick) {
       const isBullishFootprint = lowerWick > upperWick;
-      const text = isBullishFootprint ? 'FOOTPRINT (Accum)' : 'FOOTPRINT (Distrib)';
+      const text = isBullishFootprint ? '🦶print (Accum)' : '🦶print (Distrib)';
       markers.push({ time: c.time, position: isBullishFootprint ? 'belowBar' : 'aboveBar', color: '#e0b25a', shape: 'square', text });
       notifyIfNew(symKey, tf, 'footprint', text, c);
     }
@@ -1021,7 +1021,7 @@ function processMarkersAndOverlays(symKey, tf) {
       if ((sweptLow || (isHighVolume && lowerWick > body * 2)) && c.close > c.open) {
         const slPrice = (c.low * 0.999).toFixed(2);
         const tpPrice = (c.close * (1 + SIGNAL_TP_BIPS / 10000)).toFixed(2);
-        const text = `BUY @ $${c.close.toFixed(2)} | SL: $${slPrice} | TP(10bps): $${tpPrice}`;
+        const text = `B @ $${c.close.toFixed(2)} | SL:$${slPrice} | TP:$${tpPrice}`;
         markers.push({ time: c.time, position: 'belowBar', color: '#3ecf8e', shape: 'arrowUp', text });
         signals.push({ time: c.time, index: i, side: 'buy', entry: c.close, sl: parseFloat(slPrice), tp: parseFloat(tpPrice) });
         notifyIfNew(symKey, tf, 'buy', text, c);
@@ -1030,7 +1030,7 @@ function processMarkersAndOverlays(symKey, tf) {
       if ((sweptHigh || (isHighVolume && upperWick > body * 2)) && c.close < c.open) {
         const slPrice = (c.high * 1.001).toFixed(2);
         const tpPrice = (c.close * (1 - SIGNAL_TP_BIPS / 10000)).toFixed(2);
-        const text = `SELL @ $${c.close.toFixed(2)} | SL: $${slPrice} | TP(10bps): $${tpPrice}`;
+        const text = `S @ $${c.close.toFixed(2)} | SL:$${slPrice} | TP:$${tpPrice}`;
         markers.push({ time: c.time, position: 'aboveBar', color: '#ef5b6b', shape: 'arrowDown', text });
         signals.push({ time: c.time, index: i, side: 'sell', entry: c.close, sl: parseFloat(slPrice), tp: parseFloat(tpPrice) });
         notifyIfNew(symKey, tf, 'sell', text, c);
@@ -1093,7 +1093,7 @@ function toggleStrat4(symKey, tf) {
   renderMarkers(symKey, tf);
   const btn = document.getElementById('strat4Toggle-' + symKey + '-' + tf);
   btn.classList.toggle('off', !s.showStrat4);
-  btn.innerHTML = s.showStrat4 ? '🌀 Strat 4 (live)' : '🌀 Strat 4';
+  btn.innerHTML = s.showStrat4 ? '💧 Liquidity (live)' : '💧 Liquidity';
 }
 
 // Tracks the pending auto-close timer for whichever analyze popup is currently open,
@@ -1324,7 +1324,7 @@ function processStrategy2(symKey, tf) {
       const risk = entry - slPrice;
       if (risk > 0) {
         const tpPrice = entry + risk * 3; // 1:3 RR
-        const text = `S2 BUY @ $${entry.toFixed(2)} | SL: $${slPrice.toFixed(2)} | TP: $${tpPrice.toFixed(2)} (1:3)`;
+        const text = `S2 B @ $${entry.toFixed(2)} | SL:$${slPrice.toFixed(2)} | TP:$${tpPrice.toFixed(2)} (1:3)`;
         markers.push({ time: c.time, position: 'belowBar', color: '#22e6c9', shape: 'arrowUp', text });
         signals.push({ time: c.time, index: i, side: 'buy', entry, sl: slPrice, tp: tpPrice });
         notifyStrat2IfNew(symKey, tf, 'buy', text, c);
@@ -1340,7 +1340,7 @@ function processStrategy2(symKey, tf) {
       const risk = slPrice - entry;
       if (risk > 0) {
         const tpPrice = entry - risk * 3; // 1:3 RR
-        const text = `S2 SELL @ $${entry.toFixed(2)} | SL: $${slPrice.toFixed(2)} | TP: $${tpPrice.toFixed(2)} (1:3)`;
+        const text = `S2 S @ $${entry.toFixed(2)} | SL:$${slPrice.toFixed(2)} | TP:$${tpPrice.toFixed(2)} (1:3)`;
         markers.push({ time: c.time, position: 'aboveBar', color: '#ff6fae', shape: 'arrowDown', text });
         signals.push({ time: c.time, index: i, side: 'sell', entry, sl: slPrice, tp: tpPrice });
         notifyStrat2IfNew(symKey, tf, 'sell', text, c);
@@ -1473,8 +1473,8 @@ function processStrategy3(symKey, tf) {
         const risk = entry - slPrice;
         const tpPrice = nextLiquidity ? nextLiquidity.price : entry + risk * 3; // fallback if no pivot found yet
         if (tpPrice > entry && risk > 0) {
-          const tag = nextLiquidity ? 'next liquidity' : 'no pivot found, 1:3 fallback';
-          const text = `S3 BUY @ $${entry.toFixed(2)} | SL: $${slPrice.toFixed(2)} | TP: $${tpPrice.toFixed(2)} (${tag})`;
+          const tag = nextLiquidity ? 'NLQ' : 'no pivot, 1:3 fallback';
+          const text = `S3 B @ $${entry.toFixed(2)} | SL:$${slPrice.toFixed(2)} | TP:$${tpPrice.toFixed(2)} (${tag})`;
           markers.push({ time: c.time, position: 'belowBar', color: '#59e8a5', shape: 'arrowUp', text });
           signals.push({ time: c.time, index: i, side: 'buy', entry, sl: slPrice, tp: tpPrice });
           notifyStrat3IfNew(symKey, tf, 'buy', text, c);
@@ -1491,8 +1491,8 @@ function processStrategy3(symKey, tf) {
         const risk = slPrice - entry;
         const tpPrice = nextLiquidity ? nextLiquidity.price : entry - risk * 3; // fallback if no pivot found yet
         if (tpPrice < entry && risk > 0) {
-          const tag = nextLiquidity ? 'next liquidity' : 'no pivot found, 1:3 fallback';
-          const text = `S3 SELL @ $${entry.toFixed(2)} | SL: $${slPrice.toFixed(2)} | TP: $${tpPrice.toFixed(2)} (${tag})`;
+          const tag = nextLiquidity ? 'NLQ' : 'no pivot, 1:3 fallback';
+          const text = `S3 S @ $${entry.toFixed(2)} | SL:$${slPrice.toFixed(2)} | TP:$${tpPrice.toFixed(2)} (${tag})`;
           markers.push({ time: c.time, position: 'aboveBar', color: '#ff9f6f', shape: 'arrowDown', text });
           signals.push({ time: c.time, index: i, side: 'sell', entry, sl: slPrice, tp: tpPrice });
           notifyStrat3IfNew(symKey, tf, 'sell', text, c);
@@ -1508,61 +1508,172 @@ function processStrategy3(symKey, tf) {
 }
 
 /* ============================================================
-   3a-4b. STRATEGY 4 — MACD momentum cross + volume confirmation.
-   Fires when the MACD line (EMA12 - EMA26) crosses its signal line
-   (EMA9 of MACD) — a shift in momentum — but only if that candle's
-   volume is running well above its recent average, so a cross on
-   thin volume is skipped. SL sits at the recent swing low/high,
-   TP is a fixed 1:2 risk:reward. Hidden per chart until "🌀 Strat 4"
-   is tapped.
+   3a-4b. STRATEGY 4 — "Liquidity": 1D / 4H / 1H midpoint break +
+   5m/15m follow-through, plus liquidity-sweep continuation/fade.
+
+   Setup A — Midpoint break:
+     Take the last closed 1D, 4H and 1H candle. Midpoint = (high+low)/2
+     of each. When price closes through one of those midpoints AND the
+     very next 5m candle AND the very next 15m candle both continue in
+     that same direction (green after an up-break, red after a
+     down-break), go with the break. SL sits at the midpoint that was
+     broken; ride the trade until the next untouched liquidity pivot
+     (prior swing high/low) in that direction.
+
+   Setup B — Liquidity sweep + strong candle:
+     If price breaks the high (or low) of that same 1D/4H/1H reference
+     candle — i.e. runs the liquidity resting there — and is followed
+     immediately by one strong same-direction candle (body notably
+     bigger than recent average), treat it as continuation: SL at the
+     reference midpoint, TP at the next liquidity pivot beyond.
+
+   Setup C — Failed sweep / fade back to midpoint:
+     If price had pushed through that reference high (or low) and then
+     a strong opposite-direction candle shows up, treat it as a failed
+     sweep: fade back toward the reference midpoint, which becomes the
+     target; SL sits just beyond the wick that ran the liquidity.
+
+   At most one BUY and one SELL signal is emitted per candle (checked
+   in priority order A → B → C) to avoid stacking duplicate markers
+   from all three reference timeframes on the same candle. Hidden per
+   chart until "💧 Liquidity" is tapped.
    ============================================================ */
+const STRAT4_MID_REF_TFS = ['1h', '4h', '1d'];
+
+// Last CLOSED candle of refTf at or before timeSec (rolling higher-TF reference).
+function getRefCandleAt(symKey, refTf, timeSec) {
+  const rc = state[symKey] && state[symKey][refTf] && state[symKey][refTf].candles;
+  if (!rc || !rc.length) return null;
+  let found = null;
+  for (let k = 0; k < rc.length; k++) {
+    if (rc[k].time <= timeSec) found = rc[k]; else break;
+  }
+  return found;
+}
+
+// First candle in tfCandles strictly after timeSec (used for 5m/15m confirmation).
+function getNextCandleAfter(tfCandles, timeSec) {
+  if (!tfCandles) return null;
+  for (let k = 0; k < tfCandles.length; k++) {
+    if (tfCandles[k].time > timeSec) return tfCandles[k];
+  }
+  return null;
+}
+
 function processStrategy4(symKey, tf) {
   const s = state[symKey][tf];
   const candles = s.candles;
-  if (candles.length < 40) return;
+  if (!candles || candles.length < 30) return;
 
-  const macd = calculateMACD(candles, 12, 26, 9);
+  const { pivotHighs, pivotLows } = findPivots(candles, 3);
+  const c5 = (state[symKey]['5m'] && state[symKey]['5m'].candles) || [];
+  const c15 = (state[symKey]['15m'] && state[symKey]['15m'].candles) || [];
+
   const markers = [];
   const signals = [];
   const N = candles.length;
 
-  for (let i = 30; i < N; i++) {
+  for (let i = 10; i < N; i++) {
+    const prev = candles[i - 1];
     const c = candles[i];
-    const prev = macd[i - 1];
-    const cur = macd[i];
-    if (!prev || !cur) continue;
 
-    const volAvg = candles.slice(Math.max(0, i - 10), i).reduce((a, b) => a + b.volume, 0) / 10;
-    const volConfirmed = c.volume > volAvg * 1.3;
+    const refs = STRAT4_MID_REF_TFS
+      .map(refTf => {
+        const rc = getRefCandleAt(symKey, refTf, c.time);
+        return rc ? { tf: refTf, high: rc.high, low: rc.low, mid: (rc.high + rc.low) / 2 } : null;
+      })
+      .filter(Boolean);
+    if (!refs.length) continue;
 
-    const bullCross = prev.macd <= prev.signal && cur.macd > cur.signal;
-    const bearCross = prev.macd >= prev.signal && cur.macd < cur.signal;
+    const avgBody = candles.slice(Math.max(0, i - 10), i)
+      .reduce((a, b) => a + Math.abs(b.close - b.open), 0) / 10;
+    const body = Math.abs(c.close - c.open);
+    const isStrong = body > avgBody * 1.5;
+    const isGreen = c.close > c.open;
+    const isRed = c.close < c.open;
 
-    if (bullCross && volConfirmed) {
-      let swingLow = Infinity;
-      for (let j = Math.max(0, i - 5); j < i; j++) swingLow = Math.min(swingLow, candles[j].low);
-      const entry = c.close;
-      const sl = Math.min(swingLow, c.low) * 0.999;
+    let buyFired = false, sellFired = false;
+
+    const emitBuy = (entry, sl, tp, tag) => {
       const risk = entry - sl;
-      if (risk > 0) {
-        const tp = entry + risk * 2;
-        const text = `S4 BUY (MACD Cross) @ $${entry.toFixed(4)} | SL: $${sl.toFixed(4)} | TP: $${tp.toFixed(4)} (1:2)`;
-        markers.push({ time: c.time, position: 'belowBar', color: '#4dd0e1', shape: 'arrowUp', text });
-        signals.push({ time: c.time, index: i, side: 'buy', entry, sl, tp });
-        notifyStrat4IfNew(symKey, tf, 'buy', text, c);
-      }
-    } else if (bearCross && volConfirmed) {
-      let swingHigh = -Infinity;
-      for (let j = Math.max(0, i - 5); j < i; j++) swingHigh = Math.max(swingHigh, candles[j].high);
-      const entry = c.close;
-      const sl = Math.max(swingHigh, c.high) * 1.001;
+      if (risk <= 0 || tp <= entry) return false;
+      const text = `S4 B (${tag}) @ $${entry.toFixed(4)} | SL:$${sl.toFixed(4)} | TP:$${tp.toFixed(4)}`;
+      markers.push({ time: c.time, position: 'belowBar', color: '#4dd0e1', shape: 'arrowUp', text });
+      signals.push({ time: c.time, index: i, side: 'buy', entry, sl, tp });
+      notifyStrat4IfNew(symKey, tf, 'buy', text, c);
+      return true;
+    };
+    const emitSell = (entry, sl, tp, tag) => {
       const risk = sl - entry;
-      if (risk > 0) {
-        const tp = entry - risk * 2;
-        const text = `S4 SELL (MACD Cross) @ $${entry.toFixed(4)} | SL: $${sl.toFixed(4)} | TP: $${tp.toFixed(4)} (1:2)`;
-        markers.push({ time: c.time, position: 'aboveBar', color: '#ff8a65', shape: 'arrowDown', text });
-        signals.push({ time: c.time, index: i, side: 'sell', entry, sl, tp });
-        notifyStrat4IfNew(symKey, tf, 'sell', text, c);
+      if (risk <= 0 || tp >= entry) return false;
+      const text = `S4 S (${tag}) @ $${entry.toFixed(4)} | SL:$${sl.toFixed(4)} | TP:$${tp.toFixed(4)}`;
+      markers.push({ time: c.time, position: 'aboveBar', color: '#ff8a65', shape: 'arrowDown', text });
+      signals.push({ time: c.time, index: i, side: 'sell', entry, sl, tp });
+      notifyStrat4IfNew(symKey, tf, 'sell', text, c);
+      return true;
+    };
+
+    // ---- Setup A: midpoint break + 5m & 15m follow-through ----
+    for (const ref of refs) {
+      if (buyFired && sellFired) break;
+
+      if (!buyFired && prev.close <= ref.mid && c.close > ref.mid) {
+        const confirm5 = getNextCandleAfter(c5, c.time);
+        const confirm15 = getNextCandleAfter(c15, c.time);
+        const ok5 = confirm5 ? confirm5.close > confirm5.open : true;
+        const ok15 = confirm15 ? confirm15.close > confirm15.open : true;
+        if (ok5 && ok15) {
+          const entry = c.close;
+          const nextLiquidity = pivotHighs.filter(p => p.index <= i && p.price > entry).sort((a, b) => a.price - b.price)[0];
+          const tp = nextLiquidity ? nextLiquidity.price : entry + (entry - ref.mid) * 2;
+          buyFired = emitBuy(entry, ref.mid, tp, `${ref.tf} mid break${nextLiquidity ? ', NLQ' : ''}`);
+        }
+      }
+      if (!sellFired && prev.close >= ref.mid && c.close < ref.mid) {
+        const confirm5 = getNextCandleAfter(c5, c.time);
+        const confirm15 = getNextCandleAfter(c15, c.time);
+        const ok5 = confirm5 ? confirm5.close < confirm5.open : true;
+        const ok15 = confirm15 ? confirm15.close < confirm15.open : true;
+        if (ok5 && ok15) {
+          const entry = c.close;
+          const nextLiquidity = pivotLows.filter(p => p.index <= i && p.price < entry).sort((a, b) => b.price - a.price)[0];
+          const tp = nextLiquidity ? nextLiquidity.price : entry - (ref.mid - entry) * 2;
+          sellFired = emitSell(entry, ref.mid, tp, `${ref.tf} mid break${nextLiquidity ? ', NLQ' : ''}`);
+        }
+      }
+    }
+
+    // ---- Setup B: liquidity sweep + strong continuation candle ----
+    for (const ref of refs) {
+      if (buyFired && sellFired) break;
+
+      if (!buyFired && isStrong && isGreen && prev.close <= ref.high && c.close > ref.high) {
+        const entry = c.close;
+        const nextLiquidity = pivotHighs.filter(p => p.index <= i && p.price > entry).sort((a, b) => a.price - b.price)[0];
+        const tp = nextLiquidity ? nextLiquidity.price : entry + (entry - ref.mid) * 2;
+        buyFired = emitBuy(entry, ref.mid, tp, `${ref.tf} LQ break${nextLiquidity ? ', NLQ' : ''}`);
+      }
+      if (!sellFired && isStrong && isRed && prev.close >= ref.low && c.close < ref.low) {
+        const entry = c.close;
+        const nextLiquidity = pivotLows.filter(p => p.index <= i && p.price < entry).sort((a, b) => b.price - a.price)[0];
+        const tp = nextLiquidity ? nextLiquidity.price : entry - (ref.mid - entry) * 2;
+        sellFired = emitSell(entry, ref.mid, tp, `${ref.tf} LQ break${nextLiquidity ? ', NLQ' : ''}`);
+      }
+    }
+
+    // ---- Setup C: failed sweep — fade back to the reference midpoint ----
+    for (const ref of refs) {
+      if (buyFired && sellFired) break;
+
+      if (!sellFired && isStrong && isRed && prev.close > ref.high) {
+        const entry = c.close;
+        const sl = Math.max(c.high, prev.high) * 1.001;
+        sellFired = emitSell(entry, sl, ref.mid, `${ref.tf} failed sweep, fade to mid`);
+      }
+      if (!buyFired && isStrong && isGreen && prev.close < ref.low) {
+        const entry = c.close;
+        const sl = Math.min(c.low, prev.low) * 0.999;
+        buyFired = emitBuy(entry, sl, ref.mid, `${ref.tf} failed sweep, fade to mid`);
       }
     }
   }
@@ -2052,8 +2163,8 @@ document.getElementById('legend').innerHTML = `
   <div class="leg-item"><div class="lt"><span class="swatch" style="background:#ff6fae"></span>Strategy 2 — SELL</div>Mirror of the BUY logic on the sell side, same 1:3 SL:TP. Only rendered on-chart while "🎯 Strat 2" is toggled on for that panel.</div>
   <div class="leg-item"><div class="lt"><span class="swatch" style="background:#59e8a5"></span>Strategy 3 — BUY</div>Only fires when the next-lower timeframe is trending up (5m→15m→1h→4h→1d cascade). SL sits at the recent swing low; TP targets the nearest untouched liquidity pivot above entry instead of a fixed target. Tap "🧭 Strat 3" to view.</div>
   <div class="leg-item"><div class="lt"><span class="swatch" style="background:#ff9f6f"></span>Strategy 3 — SELL</div>Only fires when the next-lower timeframe is trending down. SL sits at the recent swing high; TP targets the nearest untouched liquidity pivot below entry. Tap "🧭 Strat 3" to view.</div>
-  <div class="leg-item"><div class="lt"><span class="swatch" style="background:#4dd0e1"></span>Strategy 4 — BUY</div>Fires when the MACD line (EMA12-EMA26) crosses above its signal line (EMA9 of MACD) — a momentum shift — confirmed by that candle's volume running well above its recent average. SL sits at the recent swing low, TP is a fixed 1:2 risk:reward. Tap "🌀 Strat 4" to view.</div>
-  <div class="leg-item"><div class="lt"><span class="swatch" style="background:#ff8a65"></span>Strategy 4 — SELL</div>Mirror of the BUY logic: MACD crosses below its signal line on above-average volume. SL at the recent swing high, same 1:2 SL:TP. Only rendered on-chart while "🌀 Strat 4" is toggled on for that panel.</div>
+  <div class="leg-item"><div class="lt"><span class="swatch" style="background:#4dd0e1"></span>Strategy 4 (Liquidity) — BUY</div>Takes the last closed 1D/4H/1H candle and marks its midpoint. BUY fires when price closes back above a midpoint and both the next 5m and next 15m candle stay green — SL at that midpoint, TP at the next liquidity pivot. Also fires on a strong green candle that sweeps a 1D/4H/1H high (continuation, TP at next liquidity) or on a strong green reversal candle after price dipped below a reference low (fade back up to that midpoint). Tap "💧 Liquidity" to view.</div>
+  <div class="leg-item"><div class="lt"><span class="swatch" style="background:#ff8a65"></span>Strategy 4 (Liquidity) — SELL</div>Mirror of the BUY logic: price closes back below a 1D/4H/1H midpoint with both the next 5m and 15m candle staying red (SL at the midpoint, TP at next liquidity down), a strong red candle sweeping a reference low (continuation), or a strong red reversal candle after price ran a reference high (fade back down to that midpoint). Only rendered on-chart while "💧 Liquidity" is toggled on for that panel.</div>
   <div class="leg-item"><div class="lt"><span class="swatch" style="background:#ffd166"></span>🔍 Analyze</div>No markers of its own. Tap it on any chart to instantly check the last 5 signals of Strategies 1-4 there, see whether each hit its TP or SL first, and find out which strategy currently has the higher win rate.</div>
 `;
 
