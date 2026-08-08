@@ -213,16 +213,16 @@
 
   /* Native Fullscreen API state */
   .panel:fullscreen, .panel:-webkit-full-screen {
-    width: 100vw;
-    height: 100vh;
-    display: flex;
-    flex-direction: column;
+    width: 100vw !important;
+    height: 100vh !important;
+    display: flex !important;
+    flex-direction: column !important;
     background: var(--panel);
   }
   .panel:fullscreen .chart-container,
-  .panel:-webkit-full-screen .chart-container { flex: 1 1 auto; height: auto; }
+  .panel:-webkit-full-screen .chart-container { flex: 1 1 auto !important; height: auto !important; }
   .panel:fullscreen .panel-hdr, .panel:-webkit-full-screen .panel-hdr,
-  .panel:fullscreen .panel-updated, .panel:-webkit-full-screen .panel-updated { flex: 0 0 auto; }
+  .panel:fullscreen .panel-updated, .panel:-webkit-full-screen .panel-updated { flex: 0 0 auto !important; }
 
   .badge {
     font-size: 10.5px;
@@ -840,6 +840,20 @@ function exitPseudoFullscreen(panel) {
   updateFsButtons();
 }
 
+// Ensure at most one chart is ever fullscreen/maximized at a time. Exits native
+// fullscreen and strips the pseudo-fullscreen class from every panel other than
+// (optionally) the one being kept, so clicking "Full" on a new chart while
+// another is already fullscreen always cleanly swaps rather than stacking both.
+function closeAllFullscreenExcept(keepPanel) {
+  document.querySelectorAll('.chart-maximized').forEach(p => {
+    if (p !== keepPanel) exitPseudoFullscreen(p);
+  });
+  const fsEl = document.fullscreenElement || document.webkitFullscreenElement;
+  if (fsEl && fsEl !== keepPanel) {
+    (document.exitFullscreen || document.webkitExitFullscreen).call(document);
+  }
+}
+
 function toggleFullscreen(symKey, tf) {
   const panel = document.getElementById('panel-' + symKey + '-' + tf);
   if (!panel) return;
@@ -855,6 +869,10 @@ function toggleFullscreen(symKey, tf) {
     exitPseudoFullscreen(panel);
     return;
   }
+
+  // Close out any other chart's fullscreen/maximized state first so only this
+  // one chart ends up fullscreen.
+  closeAllFullscreenExcept(panel);
 
   const req = panel.requestFullscreen || panel.webkitRequestFullscreen || panel.msRequestFullscreen;
   if (req) {
@@ -965,6 +983,15 @@ function updateFsButtons() {
                      panel.classList.contains('chart-maximized');
       btn.innerHTML = active ? '⛶ Exit' : '⛶ Full';
       btn.classList.toggle('active', active);
+
+      // Belt-and-suspenders: force the symbol/timeframe switcher dropdowns to show
+      // whenever this panel is fullscreen, rather than relying solely on the
+      // :fullscreen / .chart-maximized CSS selectors (which some browser/embed
+      // contexts fail to apply reliably).
+      const symSelect = document.getElementById('fsSwitch-' + sym.key + '-' + tf);
+      const tfSelect = document.getElementById('fsTfSwitch-' + sym.key + '-' + tf);
+      if (symSelect) symSelect.style.display = active ? 'inline-block' : '';
+      if (tfSelect) tfSelect.style.display = active ? 'inline-block' : '';
     });
   });
 }
