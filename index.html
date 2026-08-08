@@ -201,12 +201,27 @@
     z-index: 1000;
     width: 100vw !important;
     height: 100vh !important;
+    /* dvh/dvw track the *visible* viewport on mobile (excludes the address-bar
+       strip that plain vw/vh mistakenly include), so the panel actually fills
+       the screen edge-to-edge on Android/iOS instead of overflowing it. */
+    width: 100dvw !important;
+    height: 100dvh !important;
     margin: 0 !important;
     border-radius: 0 !important;
-    display: flex;
-    flex-direction: column;
+    display: flex !important;
+    flex-direction: column !important;
+    min-height: 0;
+    min-width: 0;
+    overflow: hidden;
   }
-  .chart-maximized .chart-container { flex: 1 1 auto; height: auto !important; }
+  .chart-maximized .chart-container {
+    display: flex;
+    flex: 1 1 auto;
+    width: 100% !important;
+    height: auto !important;
+    min-height: 0;
+    min-width: 0;
+  }
   .chart-maximized .panel-hdr,
   .chart-maximized .panel-updated { flex: 0 0 auto; }
   body.has-maximized-chart { overflow: hidden; }
@@ -215,12 +230,26 @@
   .panel:fullscreen, .panel:-webkit-full-screen {
     width: 100vw !important;
     height: 100vh !important;
+    width: 100dvw !important;
+    height: 100dvh !important;
     display: flex !important;
     flex-direction: column !important;
+    align-items: stretch !important;
+    justify-content: flex-start !important;
+    min-height: 0;
+    min-width: 0;
     background: var(--panel);
+    overflow: hidden;
   }
   .panel:fullscreen .chart-container,
-  .panel:-webkit-full-screen .chart-container { flex: 1 1 auto !important; height: auto !important; }
+  .panel:-webkit-full-screen .chart-container {
+    display: flex !important;
+    flex: 1 1 auto !important;
+    width: 100% !important;
+    height: auto !important;
+    min-height: 0 !important;
+    min-width: 0 !important;
+  }
   .panel:fullscreen .panel-hdr, .panel:-webkit-full-screen .panel-hdr,
   .panel:fullscreen .panel-updated, .panel:-webkit-full-screen .panel-updated { flex: 0 0 auto !important; }
 
