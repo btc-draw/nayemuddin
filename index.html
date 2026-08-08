@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>PAXG / ETH / BTC — Multi-Timeframe Strategy Dashboard</title>
+<title>NAYEM'S STRATEGY 👀</title>
 <!-- TradingView Lightweight Charts Library -->
 <script src="https://unpkg.com/lightweight-charts@4.1.1/dist/lightweight-charts.standalone.production.js"></script>
 <style>
@@ -135,11 +135,13 @@
   }
   .sig-toggle-btn:hover { border-color: var(--gold); }
   .sig-toggle-btn.off { color: var(--muted); background: transparent; }
-  .sig-toggle-btn.strat2 { color: var(--sweep); border-color: var(--sweep); }
+  .sig-toggle-btn.strat1 { color: #ffffff; border-color: #ffffff; }
+  .sig-toggle-btn.strat1.off { color: var(--muted); border-color: var(--line); background: transparent; }
+  .sig-toggle-btn.strat2 { color: #3b82f6; border-color: #3b82f6; }
   .sig-toggle-btn.strat2.off { color: var(--muted); border-color: var(--line); background: transparent; }
-  .sig-toggle-btn.strat3 { color: #59e8a5; border-color: #59e8a5; }
+  .sig-toggle-btn.strat3 { color: #22c55e; border-color: #22c55e; }
   .sig-toggle-btn.strat3.off { color: var(--muted); border-color: var(--line); background: transparent; }
-  .sig-toggle-btn.strat4 { color: #4dd0e1; border-color: #4dd0e1; }
+  .sig-toggle-btn.strat4 { color: #f9a8d4; border-color: #f9a8d4; }
   .sig-toggle-btn.strat4.off { color: var(--muted); border-color: var(--line); background: transparent; }
   .sig-toggle-btn.analyze { color: #ffd166; border-color: #ffd166; }
   .sig-toggle-btn.analyze.active { background: #ffd166; color: #0a0d12; }
@@ -236,9 +238,27 @@
   .pulse { width: 6px; height: 6px; border-radius: 50%; background: #0a0d12; animation: pulse 1.4s infinite; }
   @keyframes pulse { 0% { opacity: 1; } 50% { opacity: .25; } 100% { opacity: 1; } }
 
-  .chart-container { width: 100%; height: 300px; }
+  .chart-container { width: 100%; height: 300px; position: relative; }
   @media (min-width: 860px) { .chart-container { height: 340px; } }
   .chart-grid > .chart-panel:last-child .chart-container { height: 380px; }
+
+  .chart-labels-layer {
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    pointer-events: none;
+    overflow: hidden;
+    z-index: 5;
+  }
+  .signal-label {
+    position: absolute;
+    transform: translateX(-50%);
+    font-size: 9.5px;
+    line-height: 12px;
+    font-weight: 700;
+    white-space: nowrap;
+    text-shadow: 0 0 3px #000, 0 0 3px #000, 0 1px 2px #000;
+  }
+  .signal-label > div { white-space: nowrap; }
 
   .panel-updated { font-size: 10px; color: var(--muted); padding: 6px 12px; border-top: 1px solid var(--line); }
 
@@ -404,7 +424,7 @@
 <div class="wrap">
 
   <div class="hdr">
-    <div class="ticker">Multi-Symbol Strategy Dashboard</div>
+    <div class="ticker">NAYEM'S STRATEGY 👀</div>
     <div class="hdr-right">
       <div class="notif-wrap">
         <div class="notif-bell" id="notifBell" title="Signal notifications">
@@ -425,7 +445,7 @@
   <div class="foot">
     <b>New:</b> Three folding menus sit below BTC/USDT — <b>Top 50 Coins</b> (real Binance spot live data), <b>Binance Futures-Only Contracts</b> (real Binance Futures live data — scaled "1000x" perpetuals and index contracts like BTCDOM/DEFI that have no spot pair), and <b>Binance Alpha Tokens</b> (50 tokens; most aren't on Binance's public spot API, so this section runs on clearly-labeled <b>simulated</b> data). All three start fully collapsed — tap a group to see the list, then tap any coin to build and load its charts. Same strategy engine (EMA/VWAP, Strategy 1/2/3, Analyze, notifications) everywhere.
     <br><br>
-    <b>How to read this:</b> Each symbol below (PAXG/USDT, ETH/USDT, BTC/USDT) gets its own row of timeframe charts (5m, 15m, 1h, 4h, 1d) — stacked one per row on mobile, two per row on desktop — using <b>TradingView Lightweight Charts</b> connected to Binance's live WebSocket &amp; REST API, each loading the last <b>200 candles</b>. Features live volume bars, automated <b>Liquidity Sweep detection</b>, <b>Operator Footprint labels</b> (institutional accumulation/distribution wicks), <b>Strategy 1</b> BUY/SELL/SL markers with a fixed <b>10 bips (0.10%) take-profit</b>, <b>Strategy 2</b> (sweep/footprint + volume + EMA/VWAP confluence, fixed <b>1:3 SL:TP</b>), and <b>Strategy 3</b> — a trend cascade where each timeframe's signal direction is gated by the trend one step below it (5m→15m→1h→4h→1d: uptrend only shows BUY, downtrend only SELL), with SL/TP set to the nearest untouched liquidity pivot rather than a fixed target. All three strategies stay hidden per chart until you tap their button ("🏷️ Signals", "🎯 Strat 2", "🧭 Strat 3"), then update live. Tap <b>"🔍 Analyze"</b> on any chart for an instant read on which of the three strategies currently has the best win rate over its last 5 signals there. A <b>🔔 notification bell</b> logs every new signal from all three across all symbols and timeframes — tap any entry to jump straight to that candle.
+    <b>How to read this:</b> Each symbol below (PAXG/USDT, ETH/USDT, BTC/USDT) gets its own row of timeframe charts (5m, 15m, 1h, 4h, 1d) — stacked one per row on mobile, two per row on desktop — using <b>TradingView Lightweight Charts</b> connected to Binance's live WebSocket &amp; REST API, each loading the last <b>500 candles</b>. Features live volume bars, automated <b>Liquidity Sweep detection</b>, <b>Operator Footprint labels</b> (institutional accumulation/distribution wicks), <b>Strategy 1</b> BUY/SELL/SL markers with a fixed <b>10 bips (0.10%) take-profit</b>, <b>Strategy 2</b> (sweep/footprint + volume + EMA/VWAP confluence, fixed <b>1:3 SL:TP</b>), and <b>Strategy 3</b> — a trend cascade where each timeframe's signal direction is gated by the trend one step below it (5m→15m→1h→4h→1d: uptrend only shows BUY, downtrend only SELL), with SL/TP set to the nearest untouched liquidity pivot rather than a fixed target. All three strategies stay hidden per chart until you tap their button ("🏷️ Signals", "🎯 Strat 2", "🧭 Strat 3"), then update live. Tap <b>"🔍 Analyze"</b> on any chart for an instant read on which of the three strategies currently has the best win rate over its last 5 signals there. A <b>🔔 notification bell</b> logs every new signal from all three across all symbols and timeframes — tap any entry to jump straight to that candle.
   </div>
 </div>
 
@@ -439,7 +459,7 @@ const SYMBOLS = [
   { key: 'btc',  binance: 'btcusdt',  label: 'BTC / USDT'  }
 ];
 const TIMEFRAMES = ['5m', '15m', '1h', '4h', '1d'];
-const MAX_CANDLES = 200;
+const MAX_CANDLES = 500;
 const SIGNAL_TP_BIPS = 10; // take-profit target on every BUY/SELL signal, in basis points (10 bips = 0.10%)
 
 // Top 50 coins by market cap (real Binance USDT spot pairs, live REST + WebSocket data,
@@ -647,7 +667,7 @@ function createPanel(symKey, tf) {
         <span class="chg" id="chg-${symKey}-${tf}">—</span>
       </div>
       <span class="badge connecting" id="status-${symKey}-${tf}"><span class="pulse"></span>CONNECTING…</span>
-      <button class="sig-toggle-btn" id="sigToggle-${symKey}-${tf}" title="Show/hide signal text on this chart">🏷️ Signals</button>
+      <button class="sig-toggle-btn strat1" id="sigToggle-${symKey}-${tf}" title="Show/hide signal text on this chart">🏷️ Signals</button>
       <button class="sig-toggle-btn strat2 off" id="strat2Toggle-${symKey}-${tf}" title="Toggle Strategy 2: sweep + volume + footprint + EMA/VWAP confluence, SL:TP 1:3 — hidden until tapped">🎯 Strat 2</button>
       <button class="sig-toggle-btn strat3 off" id="strat3Toggle-${symKey}-${tf}" title="Toggle Strategy 3: lower-timeframe trend cascade (5m→15m→1h→4h→1d), SL/TP to next liquidity — hidden until tapped">🧭 Strat 3</button>
       <button class="sig-toggle-btn strat4 off" id="strat4Toggle-${symKey}-${tf}" title="Toggle Strategy 4 (Liquidity): 1D/4H/1H midpoint breaks confirmed by 5m+15m follow-through, plus liquidity-sweep continuation/fade setups — hidden until tapped">💧 Liquidity</button>
@@ -715,6 +735,7 @@ function initChart(symKey, tf) {
     },
     rightPriceScale: {
       borderColor: '#232b37',
+      scaleMargins: { top: 0.18, bottom: 0.18 },
     },
     timeScale: {
       borderColor: '#232b37',
@@ -744,6 +765,16 @@ function initChart(symKey, tf) {
   s.ema21Series = s.chart.addLineSeries({ color: '#e0895a', lineWidth: 1, title: 'EMA 21' });
   s.ema50Series = s.chart.addLineSeries({ color: '#8f6f3a', lineWidth: 2, title: 'EMA 50' });
   s.vwapSeries = s.chart.addLineSeries({ color: '#59a5e8', lineWidth: 1, lineStyle: LightweightCharts.LineStyle.Dashed, title: 'VWAP' });
+
+  // Multi-line signal label overlay (canvas markers can't do multi-line text,
+  // so full signal detail — entry/SL/TP — is drawn as a stacked HTML label
+  // positioned over the marker's bar; it moves live with panning/zooming).
+  const labelsLayer = document.createElement('div');
+  labelsLayer.className = 'chart-labels-layer';
+  container.appendChild(labelsLayer);
+  s.labelsLayer = labelsLayer;
+  s.displayedMarkers = [];
+  s.chart.timeScale().subscribeVisibleTimeRangeChange(() => renderLabelOverlay(symKey, tf));
 }
 
 function resizeAllCharts() {
@@ -752,6 +783,7 @@ function resizeAllCharts() {
       const s = state[sym.key][tf];
       if (s.chart && s.container) {
         s.chart.applyOptions({ width: s.container.clientWidth, height: s.container.clientHeight });
+        renderLabelOverlay(sym.key, tf);
       }
     });
   });
@@ -1022,7 +1054,7 @@ function processMarkersAndOverlays(symKey, tf) {
         const slPrice = (c.low * 0.999).toFixed(2);
         const tpPrice = (c.close * (1 + SIGNAL_TP_BIPS / 10000)).toFixed(2);
         const text = `B @ $${c.close.toFixed(2)} | SL:$${slPrice} | TP:$${tpPrice}`;
-        markers.push({ time: c.time, position: 'belowBar', color: '#3ecf8e', shape: 'arrowUp', text });
+        markers.push({ time: c.time, position: 'belowBar', color: '#ffffff', shape: 'arrowUp', text: '', price: c.low, lines: toTwoLines(text) });
         signals.push({ time: c.time, index: i, side: 'buy', entry: c.close, sl: parseFloat(slPrice), tp: parseFloat(tpPrice) });
         notifyIfNew(symKey, tf, 'buy', text, c);
       }
@@ -1031,7 +1063,7 @@ function processMarkersAndOverlays(symKey, tf) {
         const slPrice = (c.high * 1.001).toFixed(2);
         const tpPrice = (c.close * (1 - SIGNAL_TP_BIPS / 10000)).toFixed(2);
         const text = `S @ $${c.close.toFixed(2)} | SL:$${slPrice} | TP:$${tpPrice}`;
-        markers.push({ time: c.time, position: 'aboveBar', color: '#ef5b6b', shape: 'arrowDown', text });
+        markers.push({ time: c.time, position: 'aboveBar', color: '#ffffff', shape: 'arrowDown', text: '', price: c.high, lines: toTwoLines(text) });
         signals.push({ time: c.time, index: i, side: 'sell', entry: c.close, sl: parseFloat(slPrice), tp: parseFloat(tpPrice) });
         notifyIfNew(symKey, tf, 'sell', text, c);
       }
@@ -1052,12 +1084,74 @@ function renderMarkers(symKey, tf) {
   const s = state[symKey][tf];
   const main = s.showSignalText
     ? s.lastMarkers
-    : s.lastMarkers.map(m => ({ ...m, text: '' }));
+    : s.lastMarkers.map(m => ({ ...m, text: '', lines: undefined }));
   const strat2 = s.showStrat2 ? s.strat2Markers : [];
   const strat3 = s.showStrat3 ? s.strat3Markers : [];
   const strat4 = s.showStrat4 ? s.strat4Markers : [];
   const combined = [...main, ...strat2, ...strat3, ...strat4].sort((a, b) => a.time - b.time);
   s.candlestickSeries.setMarkers(combined);
+  s.displayedMarkers = combined;
+  renderLabelOverlay(symKey, tf);
+}
+
+// Draws the stacked multi-line HTML labels (entry/SL/TP on separate lines) for
+// every currently-displayed signal marker, positioned via the chart's own
+// time->x and price->y coordinate mapping so they track panning/zooming.
+// Condenses the pipe-delimited signal text (entry | SL | TP [tag]) into just
+// two display lines: entry on its own line, SL+TP combined on the second.
+function toTwoLines(text) {
+  const parts = text.split(' | ');
+  if (parts.length <= 2) return parts;
+  return [parts[0], parts.slice(1).join('  ')];
+}
+
+function renderLabelOverlay(symKey, tf) {
+  const s = state[symKey][tf];
+  if (!s.labelsLayer || !s.chart || !s.candlestickSeries) return;
+  const ts = s.chart.timeScale();
+  const layer = s.labelsLayer;
+  layer.innerHTML = '';
+  const markers = s.displayedMarkers || [];
+  const containerHeight = s.container ? s.container.clientHeight : 0;
+  markers.forEach(m => {
+    if (!m.lines || !m.lines.length) return;
+    const x = ts.timeToCoordinate(m.time);
+    if (x === null || x === undefined) return;
+    const containerWidth = s.container ? s.container.clientWidth : 0;
+    // Skip markers whose bar has actually scrolled off-screen — timeToCoordinate
+    // still returns a (possibly wildly out-of-range) pixel value for times outside
+    // the visible viewport, so without this check every past signal's label would
+    // get dragged back into view by the edge-clamp below.
+    if (x < -20 || x > containerWidth + 20) return;
+    const y = s.candlestickSeries.priceToCoordinate(m.price);
+    if (y === null || y === undefined) return;
+    const el = document.createElement('div');
+    el.className = 'signal-label';
+    el.style.color = m.color;
+    el.style.left = x + 'px';
+    if (m.position === 'aboveBar') {
+      el.style.bottom = (containerHeight - y + 12) + 'px';
+    } else {
+      el.style.top = (y + 12) + 'px';
+    }
+    m.lines.forEach(line => {
+      const d = document.createElement('div');
+      d.textContent = line;
+      el.appendChild(d);
+    });
+    layer.appendChild(el);
+
+    // Clamp horizontally so a label that's only *slightly* peeking past the
+    // panel edge doesn't get sliced off — but only for near-edge cases (the
+    // off-screen check above already filtered out truly out-of-view ones).
+    const labelWidth = el.offsetWidth;
+    const half = labelWidth / 2;
+    const margin = 4;
+    let clampedX = x;
+    if (clampedX - half < margin) clampedX = half + margin;
+    if (clampedX + half > containerWidth - margin) clampedX = containerWidth - margin - half;
+    el.style.left = clampedX + 'px';
+  });
 }
 
 function toggleSignalText(symKey, tf) {
@@ -1325,7 +1419,7 @@ function processStrategy2(symKey, tf) {
       if (risk > 0) {
         const tpPrice = entry + risk * 3; // 1:3 RR
         const text = `S2 B @ $${entry.toFixed(2)} | SL:$${slPrice.toFixed(2)} | TP:$${tpPrice.toFixed(2)} (1:3)`;
-        markers.push({ time: c.time, position: 'belowBar', color: '#22e6c9', shape: 'arrowUp', text });
+        markers.push({ time: c.time, position: 'belowBar', color: '#3b82f6', shape: 'arrowUp', text: '', price: c.low, lines: toTwoLines(text) });
         signals.push({ time: c.time, index: i, side: 'buy', entry, sl: slPrice, tp: tpPrice });
         notifyStrat2IfNew(symKey, tf, 'buy', text, c);
       }
@@ -1341,7 +1435,7 @@ function processStrategy2(symKey, tf) {
       if (risk > 0) {
         const tpPrice = entry - risk * 3; // 1:3 RR
         const text = `S2 S @ $${entry.toFixed(2)} | SL:$${slPrice.toFixed(2)} | TP:$${tpPrice.toFixed(2)} (1:3)`;
-        markers.push({ time: c.time, position: 'aboveBar', color: '#ff6fae', shape: 'arrowDown', text });
+        markers.push({ time: c.time, position: 'aboveBar', color: '#3b82f6', shape: 'arrowDown', text: '', price: c.high, lines: toTwoLines(text) });
         signals.push({ time: c.time, index: i, side: 'sell', entry, sl: slPrice, tp: tpPrice });
         notifyStrat2IfNew(symKey, tf, 'sell', text, c);
       }
@@ -1475,7 +1569,7 @@ function processStrategy3(symKey, tf) {
         if (tpPrice > entry && risk > 0) {
           const tag = nextLiquidity ? 'NLQ' : 'no pivot, 1:3 fallback';
           const text = `S3 B @ $${entry.toFixed(2)} | SL:$${slPrice.toFixed(2)} | TP:$${tpPrice.toFixed(2)} (${tag})`;
-          markers.push({ time: c.time, position: 'belowBar', color: '#59e8a5', shape: 'arrowUp', text });
+          markers.push({ time: c.time, position: 'belowBar', color: '#22c55e', shape: 'arrowUp', text: '', price: c.low, lines: toTwoLines(text) });
           signals.push({ time: c.time, index: i, side: 'buy', entry, sl: slPrice, tp: tpPrice });
           notifyStrat3IfNew(symKey, tf, 'buy', text, c);
         }
@@ -1493,7 +1587,7 @@ function processStrategy3(symKey, tf) {
         if (tpPrice < entry && risk > 0) {
           const tag = nextLiquidity ? 'NLQ' : 'no pivot, 1:3 fallback';
           const text = `S3 S @ $${entry.toFixed(2)} | SL:$${slPrice.toFixed(2)} | TP:$${tpPrice.toFixed(2)} (${tag})`;
-          markers.push({ time: c.time, position: 'aboveBar', color: '#ff9f6f', shape: 'arrowDown', text });
+          markers.push({ time: c.time, position: 'aboveBar', color: '#22c55e', shape: 'arrowDown', text: '', price: c.high, lines: toTwoLines(text) });
           signals.push({ time: c.time, index: i, side: 'sell', entry, sl: slPrice, tp: tpPrice });
           notifyStrat3IfNew(symKey, tf, 'sell', text, c);
         }
@@ -1598,7 +1692,7 @@ function processStrategy4(symKey, tf) {
       const risk = entry - sl;
       if (risk <= 0 || tp <= entry) return false;
       const text = `S4 B (${tag}) @ $${entry.toFixed(4)} | SL:$${sl.toFixed(4)} | TP:$${tp.toFixed(4)}`;
-      markers.push({ time: c.time, position: 'belowBar', color: '#4dd0e1', shape: 'arrowUp', text });
+      markers.push({ time: c.time, position: 'belowBar', color: '#f9a8d4', shape: 'arrowUp', text: '', price: c.low, lines: toTwoLines(text) });
       signals.push({ time: c.time, index: i, side: 'buy', entry, sl, tp });
       notifyStrat4IfNew(symKey, tf, 'buy', text, c);
       return true;
@@ -1607,7 +1701,7 @@ function processStrategy4(symKey, tf) {
       const risk = sl - entry;
       if (risk <= 0 || tp >= entry) return false;
       const text = `S4 S (${tag}) @ $${entry.toFixed(4)} | SL:$${sl.toFixed(4)} | TP:$${tp.toFixed(4)}`;
-      markers.push({ time: c.time, position: 'aboveBar', color: '#ff8a65', shape: 'arrowDown', text });
+      markers.push({ time: c.time, position: 'aboveBar', color: '#f9a8d4', shape: 'arrowDown', text: '', price: c.high, lines: toTwoLines(text) });
       signals.push({ time: c.time, index: i, side: 'sell', entry, sl, tp });
       notifyStrat4IfNew(symKey, tf, 'sell', text, c);
       return true;
