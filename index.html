@@ -77,12 +77,36 @@
     padding:8px 12px; border-bottom:1px solid var(--line); background:rgba(255,255,255,0.02);
   }
   .card-title{font-size:12px; font-weight:600; color:var(--amber);}
-  .card-stats{display:flex; gap:10px; font-size:11px;}
+  .card-stats{display:flex; align-items:center; gap:10px; font-size:11px;}
   .stat-val{font-weight:600;}
   .up{color:var(--green);} .down{color:var(--red);}
 
-  .chart-box-wrap{flex:1; position:relative; width:100%; height:100%;}
-  .chart-box{width:100%; height:100%;}
+  .fs-btn{
+    background:#1f242d; color:var(--muted); border:1px solid var(--line);
+    width:28px; height:28px; border-radius:4px; cursor:pointer;
+    display:flex; align-items:center; justify-content:center; font-size:13px;
+    font-family:inherit; flex-shrink:0;
+    touch-action:manipulation; -webkit-tap-highlight-color:transparent; user-select:none;
+  }
+  .fs-btn:hover{ color:var(--amber); border-color:var(--amber); }
+  .fs-btn.active{ color:var(--amber); border-color:var(--amber); background:#242a33; }
+
+  .chart-box-wrap{flex:1; position:relative; width:100%; height:100%; touch-action:none;}
+  .chart-box{width:100%; height:100%; touch-action:none;}
+
+  /* Fullscreen (native) — let the chart card fill the screen */
+  .chart-card:fullscreen{ width:100vw; height:100vh; border-radius:0; }
+  .chart-card:-webkit-full-screen{ width:100vw; height:100vh; border-radius:0; }
+  .chart-card:fullscreen .chart-box-wrap,
+  .chart-card:-webkit-full-screen .chart-box-wrap{ height:100%; }
+
+  /* Pseudo-fullscreen fallback — used wherever the real Fullscreen API is
+     blocked (sandboxed/embedded preview contexts, some in-app browsers) */
+  .chart-card.card-maximized{
+    position:fixed; inset:0; z-index:9999; height:100vh; width:100vw;
+    border-radius:0; margin:0;
+  }
+  body.has-maximized-card{ overflow:hidden; }
 
   .ohlc-box{
     position:absolute; top:6px; left:10px; z-index:5;
@@ -279,16 +303,126 @@ function fmtPrice(p){
 
 function toBarTime(ms){ return Math.floor(ms/1000); }
 
+// ---- Fullscreen (one chart card at a time) ----
+// Tries the real Fullscreen API first; falls back to a CSS-only "pseudo
+// fullscreen" (fixed, full-viewport) for contexts where requestFullscreen
+// is blocked, e.g. a sandboxed preview iframe or some in-app browsers.
+let pseudoFullscreenId = null;
+
+function getFsRequest(el){
+  return el.requestFullscreen || el.webkitRequestFullscreen || el.mozRequestFullScreen || el.msRequestFullscreen;
+}
+function getFsExit(){
+  return document.exitFullscreen || document.webkitExitFullscreen || document.mozCancelFullScreen || document.msExitFullscreen;
+}
+function getFsElement(){
+  return document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement;
+}
+
+function toggleFullscreen(comboId){
+  const card = document.getElementById(`card-${comboId}`);
+  if (!card) return;
+
+  const nativeActive = getFsElement() === card;
+  const pseudoActive = pseudoFullscreenId === comboId;
+
+  if (nativeActive) {
+    const exit = getFsExit();
+    if (exit) exit.call(document);
+    return;
+  }
+  if (pseudoActive) {
+    exitPseudoFullscreen(comboId);
+    return;
+  }
+
+  // Only one card can be maximized at a time.
+  if (pseudoFullscreenId) exitPseudoFullscreen(pseudoFullscreenId);
+
+  const request = getFsRequest(card);
+  if (request) {
+    const result = request.call(card);
+    if (result && typeof result.catch === 'function') {
+      result.catch(() => enterPseudoFullscreen(comboId));
+    }
+  } else {
+    enterPseudoFullscreen(comboId);
+  }
+}
+
+function enterPseudoFullscreen(comboId){
+  const card = document.getElementById(`card-${comboId}`);
+  if (!card) return;
+  card.classList.add('card-maximized');
+  document.body.classList.add('has-maximized-card');
+  pseudoFullscreenId = comboId;
+  updateFsButton(comboId, true);
+}
+
+function exitPseudoFullscreen(comboId){
+  const card = document.getElementById(`card-${comboId}`);
+  if (card) card.classList.remove('card-maximized');
+  document.body.classList.remove('has-maximized-card');
+  if (pseudoFullscreenId === comboId) pseudoFullscreenId = null;
+  updateFsButton(comboId, false);
+}
+
+function updateFsButton(comboId, isActive){
+  const btn = document.getElementById(`fs-${comboId}`);
+  if (!btn) return;
+  btn.textContent = isActive ? '✕' : '⛶';
+  btn.classList.toggle('active', isActive);
+}
+
+['fullscreenchange', 'webkitfullscreenchange', 'mozfullscreenchange', 'MSFullscreenChange'].forEach(evt => {
+  document.addEventListener(evt, () => {
+    const el = getFsElement();
+    COMBOS.forEach(combo => {
+      const card = document.getElementById(`card-${combo.id}`);
+      updateFsButton(combo.id, card === el);
+    });
+  });
+});
+
+// Some in-app/webview browsers delay, suppress, or double-fire the synthetic
+// 'click' that follows a touch. This binds both 'touchend' and 'click',
+// firing on whichever comes first, so the button responds reliably to a
+// real finger tap while a plain mouse click still works normally.
+function bindReliableTap(el, handler){
+  if (!el) return;
+  let lastFired = 0;
+  const fire = (e) => {
+    const now = Date.now();
+    if (now - lastFired < 80) return; // dedupe the touchend+click pair only
+    lastFired = now;
+    e.preventDefault();
+    e.stopPropagation();
+    handler(e);
+  };
+  el.addEventListener('touchend', fire, { passive: false });
+  el.addEventListener('click', fire);
+}
+
+function bindFullscreenButton(comboId){
+  bindReliableTap(document.getElementById(`fs-${comboId}`), () => toggleFullscreen(comboId));
+}
+
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && pseudoFullscreenId) exitPseudoFullscreen(pseudoFullscreenId);
+});
+
 function createChartCards(){
   const container = document.getElementById('charts-container');
   COMBOS.forEach(combo => {
     const card = document.createElement('div');
     card.className = 'chart-card';
+    card.id = `card-${combo.id}`;
     card.innerHTML = `
       <div class="card-header">
         <div class="card-title">${combo.name} <span style="color:var(--muted); font-weight:400;">· ${combo.tfLabel}</span></div>
         <div class="card-stats">
           <div>P: <span class="stat-val" id="price-${combo.id}">—</span></div>
+          <button class="fs-btn" id="fs-${combo.id}" aria-label="Toggle fullscreen">⛶</button>
         </div>
       </div>
       <div class="chart-box-wrap">
@@ -302,6 +436,7 @@ function createChartCards(){
       </div>
     `;
     container.appendChild(card);
+    bindFullscreenButton(combo.id);
   });
 }
 
