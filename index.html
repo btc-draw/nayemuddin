@@ -1,707 +1,1169 @@
 <!DOCTYPE html>
-<html lang="bn">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Multi-Asset Terminal — Sound Alert & Sessions</title>
-<script src="https://unpkg.com/lightweight-charts@4.1.3/dist/lightweight-charts.standalone.production.js"></script>
+<title>PAXG/USDT — Multi-Timeframe Strategy Chart</title>
+<!-- TradingView Lightweight Charts Library -->
+<script src="https://unpkg.com/lightweight-charts@4.1.1/dist/lightweight-charts.standalone.production.js"></script>
 <style>
-  :root{
-    --bg:#0a0c0f;
-    --panel:#12151a;
-    --line:#22262e;
-    --amber:#d4a017;
-    --green:#2ecc71;
-    --red:#e74c3c;
-    --blue:#3498db;
-    --text:#e8e6e0;
-    --muted:#7a8088;
+  :root {
+    --bg: #0a0d12;
+    --panel: #11151c;
+    --panel-2: #161c25;
+    --line: #232b37;
+    --text: #c9d3e0;
+    --muted: #6c7686;
+    --gold: #e0b25a;
+    --gold-bright: #f3cf7f;
+    --buy: #3ecf8e;
+    --sell: #ef5b6b;
+    --sweep: #8b7cf6;
+    --vwap: #59a5e8;
   }
-  *{box-sizing:border-box;}
-  body{
-    margin:0; background:var(--bg); color:var(--text);
-    font-family:'JetBrains Mono','Courier New',monospace;
-    display:flex; flex-direction:column; min-height:100vh; overflow-y:auto;
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'IBM Plex Mono', 'SF Mono', ui-monospace, Menlo, Consolas, monospace;
   }
-  header{
-    position:sticky; top:0; z-index:100;
-    display:flex; align-items:center; justify-content:space-between;
-    padding:10px 16px; border-bottom:1px solid var(--line); background:var(--panel);
-    flex-wrap:wrap; gap:10px;
-  }
-  .brand{display:flex; align-items:center; gap:10px;}
-  .brand .mark{
-    width:10px;height:10px;border-radius:50%;background:var(--amber);
-    box-shadow:0 0 8px var(--amber);
-  }
-  .brand h1{font-size:14px; font-weight:600; margin:0; color:var(--text);}
-  
-  /* Trading Sessions Widget */
-  .sessions-bar{
-    display:flex; gap:12px; background:#0e1117; padding:6px 12px;
-    border:1px solid var(--line); border-radius:4px; font-size:10px; flex-wrap:wrap;
-  }
-  .session-item{display:flex; align-items:center; gap:5px;}
-  .session-dot{width:6px; height:6px; border-radius:50%;}
+  .wrap { max-width: 1280px; margin: 0 auto; padding: 18px 18px 30px; }
 
-  .legend{
-    display:flex; gap:14px; padding:6px 16px; font-size:10px; color:var(--muted);
-    border-bottom:1px solid var(--line); background:var(--panel); flex-wrap:wrap;
-    position:sticky; top:49px; z-index:99; align-items:center; justify-content:space-between;
+  .hdr {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 14px;
+    border-bottom: 1px solid var(--line);
+    padding-bottom: 14px;
+    margin-bottom: 14px;
   }
-  .legend-items{display:flex; gap:12px; flex-wrap:wrap;}
-  .legend-items span{display:flex; align-items:center; gap:5px;}
-  .dot{width:7px;height:7px;border-radius:2px;}
+  .ticker { font-size: 22px; letter-spacing: 0.5px; color: var(--gold-bright); font-weight: 600; }
+  .hdr-right { display: flex; align-items: center; gap: 10px; }
 
-  .audio-btn{
-    background:#1f242d; color:var(--amber); border:1px solid var(--amber);
-    padding:3px 8px; border-radius:3px; font-size:10px; cursor:pointer;
-    font-family:inherit;
+  .controls { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; }
+  .chip {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    padding: 6px 10px;
+    border: 1px solid var(--line);
+    border-radius: 20px;
+    cursor: pointer;
+    user-select: none;
+    color: var(--muted);
+    background: var(--panel);
+    transition: all .15s;
   }
-  .audio-btn.active{background:var(--amber); color:#000;}
+  .chip:hover { border-color: var(--gold); }
+  .dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
 
-  /* Grid: Mobile = 1 per row | PC = 2 per row */
-  .charts-container{
-    display:grid; grid-template-columns: 1fr; gap:14px; padding:14px;
-  }
-  @media (min-width: 900px) {
-    .charts-container{ grid-template-columns: repeat(2, 1fr); }
+  .panel {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    overflow: hidden;
+    position: relative;
   }
 
-  .chart-card{
-    background:var(--panel); border:1px solid var(--line); border-radius:6px;
-    display:flex; flex-direction:column; height:440px; position:relative; overflow:hidden;
+  /* Responsive chart grid: 1 per row on mobile, 2 per row on desktop */
+  .chart-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 16px;
   }
-  .card-header{
-    display:flex; justify-content:space-between; align-items:center;
-    padding:8px 12px; border-bottom:1px solid var(--line); background:rgba(255,255,255,0.02);
+  @media (min-width: 860px) {
+    .chart-grid { grid-template-columns: 1fr 1fr; }
+    .chart-grid > .chart-panel:last-child { grid-column: 1 / -1; }
   }
-  .card-title{font-size:12px; font-weight:600; color:var(--amber);}
-  .card-stats{display:flex; align-items:center; gap:10px; font-size:11px;}
-  .stat-val{font-weight:600;}
-  .up{color:var(--green);} .down{color:var(--red);}
 
-  .fs-btn{
-    background:#1f242d; color:var(--muted); border:1px solid var(--line);
-    width:28px; height:28px; border-radius:4px; cursor:pointer;
-    display:flex; align-items:center; justify-content:center; font-size:13px;
-    font-family:inherit; flex-shrink:0;
-    touch-action:manipulation; -webkit-tap-highlight-color:transparent; user-select:none;
+  .chart-panel { display: flex; flex-direction: column; }
+  .panel-hdr {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    flex-wrap: wrap;
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--line);
   }
-  .fs-btn:hover{ color:var(--amber); border-color:var(--amber); }
-  .fs-btn.active{ color:var(--amber); border-color:var(--amber); background:#242a33; }
+  .panel-hdr-left { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+  .panel-tf { font-size: 13px; font-weight: 700; color: var(--gold-bright); letter-spacing: 0.5px; }
+  .panel-price { font-size: 16px; font-weight: 600; color: var(--text); }
+  .chg { font-size: 12px; padding: 2px 6px; border-radius: 4px; }
+  .chg.up { color: var(--buy); background: rgba(62, 207, 142, 0.1); }
+  .chg.down { color: var(--sell); background: rgba(239, 91, 107, 0.1); }
 
-  .chart-box-wrap{flex:1; position:relative; width:100%; height:100%; touch-action:none;}
-  .chart-box{width:100%; height:100%; touch-action:none;}
-
-  /* Fullscreen (native) — let the chart card fill the screen */
-  .chart-card:fullscreen{ width:100vw; height:100vh; border-radius:0; }
-  .chart-card:-webkit-full-screen{ width:100vw; height:100vh; border-radius:0; }
-  .chart-card:fullscreen .chart-box-wrap,
-  .chart-card:-webkit-full-screen .chart-box-wrap{ height:100%; }
-
-  /* Pseudo-fullscreen fallback — used wherever the real Fullscreen API is
-     blocked (sandboxed/embedded preview contexts, some in-app browsers) */
-  .chart-card.card-maximized{
-    position:fixed; inset:0; z-index:9999; height:100vh; width:100vw;
-    border-radius:0; margin:0;
+  .panel-hdr-right { display: flex; align-items: center; gap: 8px; }
+  .sig-toggle-btn {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 10.5px;
+    font-weight: 600;
+    letter-spacing: 0.3px;
+    padding: 4px 8px;
+    border-radius: 4px;
+    border: 1px solid var(--line);
+    background: var(--panel-2);
+    color: var(--gold-bright);
+    cursor: pointer;
+    user-select: none;
+    white-space: nowrap;
+    transition: all .15s;
   }
-  body.has-maximized-card{ overflow:hidden; }
+  .sig-toggle-btn:hover { border-color: var(--gold); }
+  .sig-toggle-btn.off { color: var(--muted); background: transparent; }
 
-  .ohlc-box{
-    position:absolute; top:6px; left:10px; z-index:5;
-    font-size:9px; background:rgba(18,21,26,0.9); border:1px solid var(--line);
-    padding:3px 6px; border-radius:3px; display:flex; gap:6px; pointer-events:none;
+  .badge {
+    font-size: 10.5px;
+    padding: 3px 8px;
+    border-radius: 3px;
+    letter-spacing: 0.4px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    white-space: nowrap;
   }
-  .ohlc-box b{color:var(--amber);}
+  .badge.live { color: #0a0d12; background: var(--buy); }
+  .badge.sim { color: #0a0d12; background: var(--gold); }
+  .badge.connecting { color: var(--muted); background: var(--panel-2); border: 1px solid var(--line); }
+  .pulse { width: 6px; height: 6px; border-radius: 50%; background: #0a0d12; animation: pulse 1.4s infinite; }
+  @keyframes pulse { 0% { opacity: 1; } 50% { opacity: .25; } 100% { opacity: 1; } }
 
-  /* In-page toast (fallback when browser Notification permission isn't granted) */
-  .toast-stack{
-    position:fixed; top:56px; right:12px; z-index:500;
-    display:flex; flex-direction:column; gap:8px; max-width:280px;
-  }
-  .toast{
-    padding:10px 12px; border-radius:6px; font-size:11px; line-height:1.4;
-    background:#12151a; border:1px solid var(--line); border-left:4px solid var(--amber);
-    box-shadow:0 4px 12px rgba(0,0,0,0.4); animation:toast-in 0.15s ease-out;
-  }
-  .toast.bull{ border-left-color:var(--green); }
-  .toast.bear{ border-left-color:var(--red); }
-  .toast b{ display:block; margin-bottom:2px; }
-  @keyframes toast-in{ from{opacity:0; transform:translateY(-6px);} to{opacity:1; transform:translateY(0);} }
+  .chart-container { width: 100%; height: 300px; }
+  @media (min-width: 860px) { .chart-container { height: 340px; } }
+  .chart-grid > .chart-panel:last-child .chart-container { height: 380px; }
 
-  footer{
-    padding:8px 16px; font-size:10px; color:var(--muted); border-top:1px solid var(--line);
-    background:var(--panel); text-align:center; margin-top:auto;
+  .panel-updated { font-size: 10px; color: var(--muted); padding: 6px 12px; border-top: 1px solid var(--line); }
+
+  .legend {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+    gap: 10px;
+    margin-top: 16px;
   }
+  .leg-item { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 10px 12px; font-size: 11.5px; color: var(--muted); }
+  .leg-item .lt { display: flex; align-items: center; gap: 7px; color: var(--text); font-weight: 600; margin-bottom: 4px; font-size: 12px; }
+  .swatch { width: 14px; height: 3px; border-radius: 2px; flex-shrink: 0; }
+  .tri { width: 0; height: 0; flex-shrink: 0; }
+  .tri.up { border-left: 6px solid transparent; border-right: 6px solid transparent; border-bottom: 9px solid var(--buy); }
+  .tri.down { border-left: 6px solid transparent; border-right: 6px solid transparent; border-top: 9px solid var(--sell); }
+
+  .foot { margin-top: 16px; font-size: 11px; color: var(--muted); line-height: 1.6; border-top: 1px solid var(--line); padding-top: 12px; }
+  .foot b { color: var(--gold); }
+
+  /* Red scalping-time notice */
+  .notice-banner {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: rgba(239, 91, 107, 0.12);
+    border: 1px solid var(--sell);
+    color: #ff8a94;
+    border-radius: 6px;
+    padding: 10px 14px;
+    margin-bottom: 14px;
+    font-size: 12.5px;
+    font-weight: 700;
+    letter-spacing: 0.3px;
+    line-height: 1.5;
+  }
+  .notice-banner .notice-icon { font-size: 16px; flex-shrink: 0; }
+  .notice-banner b { color: #fff; }
+
+  /* Strategies section */
+  .strat-section { margin-top: 18px; }
+  .strat-title {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--gold-bright);
+    letter-spacing: 0.4px;
+    margin-bottom: 10px;
+  }
+  .strat-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+  @media (min-width: 700px) {
+    .strat-grid { grid-template-columns: 1fr 1fr; }
+  }
+  .strat-card {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    overflow: hidden;
+  }
+  .strat-btn {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    background: var(--panel-2);
+    color: var(--text);
+    border: none;
+    text-align: left;
+    padding: 12px 14px;
+    font-family: inherit;
+    font-size: 12.5px;
+    font-weight: 700;
+    letter-spacing: 0.3px;
+    cursor: pointer;
+    user-select: none;
+  }
+  .strat-btn:hover { color: var(--gold-bright); }
+  .strat-btn .chev { color: var(--muted); font-size: 11px; transition: transform .15s; flex-shrink: 0; }
+  .strat-btn.open .chev { transform: rotate(180deg); }
+  .strat-body {
+    display: none;
+    padding: 12px 14px 14px;
+    font-size: 11.5px;
+    color: var(--muted);
+    line-height: 1.6;
+  }
+  .strat-body.open { display: block; }
+  .strat-desc { margin-bottom: 10px; }
+  .strat-levels {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+  }
+  .strat-lvl {
+    background: var(--panel-2);
+    border: 1px solid var(--line);
+    border-radius: 5px;
+    padding: 7px 8px;
+    text-align: center;
+  }
+  .strat-lvl .lbl { font-size: 9.5px; color: var(--muted); letter-spacing: 0.4px; margin-bottom: 3px; }
+  .strat-lvl .val { font-size: 12px; font-weight: 700; }
+  .strat-lvl.entry .val { color: var(--gold-bright); }
+  .strat-lvl.sl .val { color: var(--sell); }
+  .strat-lvl.tp .val { color: var(--buy); }
+  .strat-rr { margin-top: 8px; font-size: 11px; color: var(--text); }
+  .strat-rr b { color: var(--gold); }
+
+  /* Per-chart strategy signal toggle buttons */
+  .strat-toggle-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--line);
+    background: var(--panel-2);
+  }
+  .strat-mini-btn {
+    font-size: 9.5px;
+    font-weight: 700;
+    letter-spacing: 0.3px;
+    padding: 4px 7px;
+    border-radius: 4px;
+    border: 1px solid var(--line);
+    background: transparent;
+    color: var(--muted);
+    cursor: pointer;
+    user-select: none;
+    white-space: nowrap;
+    font-family: inherit;
+    transition: all .15s;
+  }
+  .strat-mini-btn:hover { border-color: var(--strat-color, var(--gold)); color: var(--text); }
+  .strat-mini-btn.active {
+    color: #0a0d12;
+    background: var(--strat-color, var(--gold));
+    border-color: var(--strat-color, var(--gold));
+  }
+
+  /* Always-visible Entry/SL/TP text readout for active strategies on each chart */
+  .strat-active-info {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 0;
+  }
+  .strat-active-info:empty { display: none; }
+  .strat-info-row {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+    font-size: 11px;
+    padding: 7px 12px;
+    border-bottom: 1px solid var(--line);
+    background: var(--panel);
+  }
+  .strat-info-tag {
+    font-size: 9.5px;
+    font-weight: 700;
+    padding: 2px 6px;
+    border-radius: 3px;
+    color: #0a0d12;
+    letter-spacing: 0.3px;
+    flex-shrink: 0;
+  }
+  .strat-info-dir { font-weight: 700; letter-spacing: 0.3px; flex-shrink: 0; }
+  .strat-info-dir.buy { color: var(--buy); }
+  .strat-info-dir.sell { color: var(--sell); }
+  .strat-info-vals { display: flex; gap: 10px; flex-wrap: wrap; color: var(--text); }
+  .strat-info-vals span b { font-weight: 700; }
+  .strat-info-vals .lbl-entry b { color: var(--gold-bright); }
+  .strat-info-vals .lbl-sl b { color: var(--sell); }
+  .strat-info-vals .lbl-tp b { color: var(--buy); }
+  .strat-info-none { color: var(--muted); font-style: italic; }
+
+  /* Notification bell + panel */
+  .notif-wrap { position: relative; }
+  .notif-bell {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 30px;
+    height: 30px;
+    border-radius: 6px;
+    border: 1px solid var(--line);
+    background: var(--panel-2);
+    color: var(--text);
+    cursor: pointer;
+    font-size: 15px;
+    user-select: none;
+  }
+  .notif-bell:hover { border-color: var(--gold); }
+  .notif-badge {
+    position: absolute;
+    top: -6px;
+    right: -6px;
+    min-width: 16px;
+    height: 16px;
+    padding: 0 3px;
+    border-radius: 8px;
+    background: var(--sell);
+    color: #fff;
+    font-size: 10px;
+    font-weight: 700;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+  }
+  .notif-badge.show { display: flex; }
+
+  .notif-panel {
+    display: none;
+    position: absolute;
+    top: 38px;
+    right: 0;
+    width: 320px;
+    max-height: 360px;
+    overflow-y: auto;
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    box-shadow: 0 12px 28px rgba(0,0,0,0.45);
+    z-index: 50;
+  }
+  .notif-panel.open { display: block; }
+  .notif-panel-hdr {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.4px;
+    color: var(--muted);
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--line);
+    position: sticky;
+    top: 0;
+    background: var(--panel);
+  }
+  .notif-empty { padding: 18px 12px; font-size: 12px; color: var(--muted); text-align: center; }
+  .notif-item {
+    display: flex;
+    gap: 9px;
+    align-items: flex-start;
+    padding: 9px 12px;
+    border-bottom: 1px solid var(--line);
+    cursor: pointer;
+    transition: background .12s;
+  }
+  .notif-item:last-child { border-bottom: none; }
+  .notif-item:hover { background: var(--panel-2); }
+  .notif-dot { width: 9px; height: 9px; border-radius: 50%; margin-top: 3px; flex-shrink: 0; }
+  .notif-dot.buy { background: var(--buy); }
+  .notif-dot.sell { background: var(--sell); }
+  .notif-dot.sweep { background: var(--sweep); }
+  .notif-dot.footprint { background: var(--gold); }
+  .notif-body { flex: 1; min-width: 0; }
+  .notif-tf { font-size: 10px; font-weight: 700; color: var(--gold-bright); letter-spacing: 0.4px; }
+  .notif-text { font-size: 11.5px; color: var(--text); line-height: 1.4; }
+  .notif-time { font-size: 10px; color: var(--muted); margin-top: 2px; }
 </style>
 </head>
 <body>
+<div class="wrap">
 
-<header>
-  <div class="brand">
-    <div class="mark"></div>
-    <h1>Multi-Timeframe Terminal</h1>
-  </div>
-
-  <!-- Bangladesh Time Market Sessions -->
-  <div class="sessions-bar">
-    <div class="session-item">
-      <div class="session-dot" style="background:#e74c3c;"></div>
-      <span>Asian: <b>06:00 AM - 03:00 PM</b></span>
-    </div>
-    <div class="session-item">
-      <div class="session-dot" style="background:#3498db;"></div>
-      <span>London: <b>01:00 PM - 10:00 PM</b></span>
-    </div>
-    <div class="session-item">
-      <div class="session-dot" style="background:#2ecc71;"></div>
-      <span>New York: <b>06:00 PM - 03:00 AM</b></span>
+  <div class="hdr">
+    <div class="ticker">PAXG / USDT</div>
+    <div class="hdr-right">
+      <div class="notif-wrap">
+        <div class="notif-bell" id="notifBell" title="Signal notifications">
+          🔔<span class="notif-badge" id="notifBadge">0</span>
+        </div>
+        <div class="notif-panel" id="notifPanel">
+          <div class="notif-panel-hdr">SIGNAL NOTIFICATIONS</div>
+          <div id="notifList"></div>
+        </div>
+      </div>
     </div>
   </div>
 
-  <div id="global-status" style="font-size:11px; color:var(--muted);">কানেক্ট হচ্ছে...</div>
-</header>
-
-<div class="legend">
-  <div class="legend-items">
-    <span><div class="dot" style="background:#2ecc71"></div> Bull Sweep (BSWP)</span>
-    <span><div class="dot" style="background:#e74c3c"></div> Bear Sweep (SSWP)</span>
-    <span><div class="dot" style="background:#f5a623"></div> High Vol (VOL)</span>
+  <div class="notice-banner">
+    <span class="notice-icon">⚠️</span>
+    <span>##SCALPING TIME — 8:00 AM ET = <b>BD Time 6:00 PM</b> &nbsp;|&nbsp; CLOSE TRADE by 12:00 PM ET = <b>BD Time 10:00 PM</b></span>
   </div>
-  <button class="audio-btn" id="audio-toggle" onclick="toggleAudio()">🔔 Enable Alert Sound</button>
+
+  <div class="controls" id="controls"></div>
+
+  <div class="chart-grid" id="chartGrid"></div>
+
+  <div class="legend" id="legend"></div>
+
+  <div class="strat-section">
+    <div class="strat-title">⚡ Breakout Scalping — Entry / SL / TP Logic</div>
+    <div style="font-size:11px;color:var(--muted);margin-bottom:10px;line-height:1.5;">This strategy runs <b style="color:var(--gold-bright)">live</b> on every chart above. Tap <b>BRK</b> under any timeframe's header to plot its real signals — with live Entry/SL/TP price lines — directly on that chart.</div>
+    <div class="strat-grid" id="stratGrid"></div>
+  </div>
+
+  <div class="foot">
+    <b>How to read this:</b> Every timeframe (5m, 15m, 1h, 4h, 1d) renders as its own live chart — stacked one per row on mobile, two per row on desktop — using <b>TradingView Lightweight Charts</b> connected to Binance's live WebSocket &amp; REST API, each loading the last <b>500 candles</b>. Features live volume bars, automated <b>Liquidity Sweep detection</b>, <b>Operator Footprint labels</b> (institutional accumulation/distribution wicks), rule-based <b>BUY/SELL/SL markers</b>, and a <b>🔔 notification bell</b> that logs every new signal across all timeframes — tap any entry to jump straight to that candle on its chart.
+  </div>
 </div>
-
-<div class="charts-container" id="charts-container">
-  <!-- Dynamic Charts Injection -->
-</div>
-
-<div class="toast-stack" id="toast-stack"></div>
-
-<footer>
-  <span>Binance Stream · 500 Candles · 1m/5m/1h/4h/1d · Real-time Liquidity Sweep & Sound Engine (BST)</span><br>
-  <span>PAXG · BTC · ETH via Binance Spot · XPT via Binance Futures (platinum has no spot listing)</span>
-</footer>
 
 <script>
-// XAG Deleted as requested
-const ASSETS = [
-  { id: "paxg", symbol: "PAXGUSDT", name: "PAXG / USDT (Gold)",    market: "spot" },
-  { id: "btc",  symbol: "BTCUSDT",  name: "BTC / USDT (Bitcoin)",  market: "spot" },
-  { id: "eth",  symbol: "ETHUSDT",  name: "ETH / USDT (Ethereum)", market: "spot" },
-  // XPT/USDT has no Binance SPOT listing — platinum only trades on Binance Futures
-  // (USDS-M perpetual, launched Jan 2026) — so this one is fetched/streamed from
-  // the futures API/WS instead of spot, everything else about it is identical.
-  { id: "xpt",  symbol: "XPTUSDT",  name: "XPT / USDT (Platinum)", market: "futures" }
+/* ============================================================
+   CONFIG & STATE MANAGEMENT
+   ============================================================ */
+const SYMBOL = 'paxgusdt';
+const TIMEFRAMES = ['5m', '15m', '1h', '4h', '1d'];
+const MAX_CANDLES = 200;
+
+// The scalping strategy — live detection logic, its own marker color,
+// and its own per-chart toggle button. (Only Breakout is active now.)
+const STRATEGY_DEFS = [
+  { key: 'breakout', label: 'BRK', full: 'Breakout Scalping', color: '#f3cf7f' }
 ];
 
-const TIMEFRAMES = [
-  { id: "1m",  label: "1 Min",  interval: "1m" },
-  { id: "5m",  label: "5 Min",  interval: "5m" },
-  { id: "1h",  label: "1 Hour", interval: "1h" },
-  { id: "4h",  label: "4 Hour", interval: "4h" },
-  { id: "1d",  label: "1 Day",  interval: "1d" }
-];
-
-// Combo = one chart card = one asset at one timeframe
-const COMBOS = [];
-ASSETS.forEach(asset => {
-  TIMEFRAMES.forEach(tf => {
-    COMBOS.push({
-      id: `${asset.id}_${tf.id}`,
-      assetId: asset.id,
-      symbol: asset.symbol,
-      name: asset.name,
-      market: asset.market,
-      interval: tf.interval,
-      tfLabel: tf.label
-    });
-  });
-});
-
-const TOTAL_CANDLES = 500;
-const REST_BASE_SPOT = "https://api.binance.com/api/v3";
-const REST_BASE_FUTURES = "https://fapi.binance.com/fapi/v1"; // XPTUSDT lives here, not on spot
-
-const instances = {};
-let audioEnabled = false;
-
-// Web Audio API Synthesizer (No external mp3 link needed)
-function playBeep(freq = 880, type = 'sine') {
-  if (!audioEnabled) return;
-  try {
-    const ctx = new (window.AudioContext || window.webkitAudioContext)();
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-    osc.type = type;
-    osc.frequency.value = freq;
-    osc.connect(gain);
-    gain.connect(ctx.destination);
-    osc.start();
-    gain.gain.exponentialRampToValueAtTime(0.00001, ctx.currentTime + 0.35);
-    osc.stop(ctx.currentTime + 0.35);
-  } catch(e){}
-}
-
-function toggleAudio(){
-  audioEnabled = !audioEnabled;
-  const btn = document.getElementById('audio-toggle');
-  if(audioEnabled){
-    btn.textContent = "🔊 Sound Enabled";
-    btn.classList.add('active');
-    playBeep(600, 'triangle');
-  } else {
-    btn.textContent = "🔔 Enable Alert Sound";
-    btn.classList.remove('active');
-  }
-}
-
-// Plays `count` beeps back-to-back (spaced out so each tone is distinct) —
-// used for BSWP/SSWP alerts instead of the single VOL beep.
-function playBeepSequence(count = 5, freq = 1046.50, type = 'sine'){
-  if (!audioEnabled) return;
-  for (let i = 0; i < count; i++){
-    setTimeout(() => playBeep(freq, type), i * 220);
-  }
-}
-
-// ---- Browser notification / in-page toast for new BSWP / SSWP events ----
-function requestNotificationPermission(){
-  if ('Notification' in window && Notification.permission === 'default'){
-    Notification.requestPermission().catch(() => {});
-  }
-}
-
-function showToast(title, body, kind){
-  const stack = document.getElementById('toast-stack');
-  if (!stack) return;
-  const el = document.createElement('div');
-  el.className = 'toast' + (kind ? ' ' + kind : '');
-  el.innerHTML = `<b>${title}</b>${body}`;
-  stack.appendChild(el);
-  setTimeout(() => el.remove(), 6000);
-}
-
-function notifySweep(combo, isBull){
-  const kind = isBull ? 'bull' : 'bear';
-  const title = isBull ? 'Bull Sweep (BSWP)' : 'Bear Sweep (SSWP)';
-  const body = `${combo.name} · ${combo.tfLabel}`;
-
-  if ('Notification' in window && Notification.permission === 'granted'){
-    try {
-      new Notification(title, { body });
-      return;
-    } catch(e) { /* fall through to in-page toast */ }
-  }
-  showToast(title, body, kind);
-}
-
-function fmtPrice(p){
-  if(!p || isNaN(p)) return '—';
-  return p.toLocaleString('en-US',{minimumFractionDigits:2, maximumFractionDigits:2});
-}
-
-function toBarTime(ms){ return Math.floor(ms/1000); }
-
-// ---- Fullscreen (one chart card at a time) ----
-// Tries the real Fullscreen API first; falls back to a CSS-only "pseudo
-// fullscreen" (fixed, full-viewport) for contexts where requestFullscreen
-// is blocked, e.g. a sandboxed preview iframe or some in-app browsers.
-let pseudoFullscreenId = null;
-
-function getFsRequest(el){
-  return el.requestFullscreen || el.webkitRequestFullscreen || el.mozRequestFullScreen || el.msRequestFullscreen;
-}
-function getFsExit(){
-  return document.exitFullscreen || document.webkitExitFullscreen || document.mozCancelFullScreen || document.msExitFullscreen;
-}
-function getFsElement(){
-  return document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement;
-}
-
-function toggleFullscreen(comboId){
-  const card = document.getElementById(`card-${comboId}`);
-  if (!card) return;
-
-  const nativeActive = getFsElement() === card;
-  const pseudoActive = pseudoFullscreenId === comboId;
-
-  if (nativeActive) {
-    const exit = getFsExit();
-    if (exit) exit.call(document);
-    return;
-  }
-  if (pseudoActive) {
-    exitPseudoFullscreen(comboId);
-    return;
-  }
-
-  // Only one card can be maximized at a time.
-  if (pseudoFullscreenId) exitPseudoFullscreen(pseudoFullscreenId);
-
-  const request = getFsRequest(card);
-  if (request) {
-    const result = request.call(card);
-    if (result && typeof result.catch === 'function') {
-      result.catch(() => enterPseudoFullscreen(comboId));
-    }
-  } else {
-    enterPseudoFullscreen(comboId);
-  }
-}
-
-function enterPseudoFullscreen(comboId){
-  const card = document.getElementById(`card-${comboId}`);
-  if (!card) return;
-  card.classList.add('card-maximized');
-  document.body.classList.add('has-maximized-card');
-  pseudoFullscreenId = comboId;
-  updateFsButton(comboId, true);
-}
-
-function exitPseudoFullscreen(comboId){
-  const card = document.getElementById(`card-${comboId}`);
-  if (card) card.classList.remove('card-maximized');
-  document.body.classList.remove('has-maximized-card');
-  if (pseudoFullscreenId === comboId) pseudoFullscreenId = null;
-  updateFsButton(comboId, false);
-}
-
-function updateFsButton(comboId, isActive){
-  const btn = document.getElementById(`fs-${comboId}`);
-  if (!btn) return;
-  btn.textContent = isActive ? '✕' : '⛶';
-  btn.classList.toggle('active', isActive);
-}
-
-['fullscreenchange', 'webkitfullscreenchange', 'mozfullscreenchange', 'MSFullscreenChange'].forEach(evt => {
-  document.addEventListener(evt, () => {
-    const el = getFsElement();
-    COMBOS.forEach(combo => {
-      const card = document.getElementById(`card-${combo.id}`);
-      updateFsButton(combo.id, card === el);
-    });
-  });
-});
-
-// Some in-app/webview browsers delay, suppress, or double-fire the synthetic
-// 'click' that follows a touch. This binds both 'touchend' and 'click',
-// firing on whichever comes first, so the button responds reliably to a
-// real finger tap while a plain mouse click still works normally.
-function bindReliableTap(el, handler){
-  if (!el) return;
-  let lastFired = 0;
-  const fire = (e) => {
-    const now = Date.now();
-    if (now - lastFired < 80) return; // dedupe the touchend+click pair only
-    lastFired = now;
-    e.preventDefault();
-    e.stopPropagation();
-    handler(e);
+// Per-timeframe state: candles, websocket, chart + series instances
+const state = {};
+TIMEFRAMES.forEach(tf => {
+  state[tf] = {
+    candles: [],
+    ws: null,
+    chart: null,
+    container: null,
+    candlestickSeries: null,
+    volumeSeries: null,
+    vwapSeries: null,
+    ema9Series: null,
+    ema21Series: null,
+    ema50Series: null,
+    seenMarkerKeys: new Set(),
+    isInitialLoad: true,
+    showSignalText: true,
+    baseMarkers: [],
+    lastMarkers: [],
+    strategySignals: {},      // { breakout: [...] }
+    strategyEnabled: STRATEGY_DEFS.reduce((acc, d) => (acc[d.key] = false, acc), {}),
+    strategyPriceLines: {}    // { breakout: {entry,sl,tp}, ... } live price-line refs on the chart
   };
-  el.addEventListener('touchend', fire, { passive: false });
-  el.addEventListener('click', fire);
-}
-
-function bindFullscreenButton(comboId){
-  bindReliableTap(document.getElementById(`fs-${comboId}`), () => toggleFullscreen(comboId));
-}
-
-document.addEventListener('keydown', (e) => {
-  if (e.key === 'Escape' && pseudoFullscreenId) exitPseudoFullscreen(pseudoFullscreenId);
 });
 
-function createChartCards(){
-  const container = document.getElementById('charts-container');
-  COMBOS.forEach(combo => {
-    const card = document.createElement('div');
-    card.className = 'chart-card';
-    card.id = `card-${combo.id}`;
-    card.innerHTML = `
-      <div class="card-header">
-        <div class="card-title">${combo.name} <span style="color:var(--muted); font-weight:400;">· ${combo.tfLabel}</span></div>
-        <div class="card-stats">
-          <div>P: <span class="stat-val" id="price-${combo.id}">—</span></div>
-          <button class="fs-btn" id="fs-${combo.id}" aria-label="Toggle fullscreen">⛶</button>
-        </div>
+// Notification system state (shared across all timeframe charts)
+let notifications = [];      // history of signal notifications (most recent first)
+let unreadCount = 0;
+
+/* ============================================================
+   1. BUILD PANELS & LIGHTWEIGHT CHARTS INITIALIZATION
+   ============================================================ */
+function createPanel(tf) {
+  const panel = document.createElement('div');
+  panel.className = 'panel chart-panel';
+  panel.id = 'panel-' + tf;
+  panel.innerHTML = `
+    <div class="panel-hdr">
+      <div class="panel-hdr-left">
+        <span class="panel-tf">${tf.toUpperCase()}</span>
+        <span class="panel-price" id="price-${tf}">—</span>
+        <span class="chg" id="chg-${tf}">—</span>
       </div>
-      <div class="chart-box-wrap">
-        <div class="chart-box" id="chart-${combo.id}"></div>
-        <div class="ohlc-box" id="ohlc-${combo.id}" style="display:none;">
-          <span>O <b id="o-${combo.id}">-</b></span>
-          <span>H <b id="h-${combo.id}">-</b></span>
-          <span>L <b id="l-${combo.id}">-</b></span>
-          <span>C <b id="c-${combo.id}">-</b></span>
-        </div>
-      </div>
-    `;
-    container.appendChild(card);
-    bindFullscreenButton(combo.id);
+      <span class="badge connecting" id="status-${tf}"><span class="pulse"></span>CONNECTING…</span>
+      <button class="sig-toggle-btn" id="sigToggle-${tf}" title="Show/hide signal text on this chart">🏷️ Signals</button>
+    </div>
+    <div class="strat-toggle-row" id="stratRow-${tf}"></div>
+    <div class="strat-active-info" id="stratInfo-${tf}"></div>
+    <div class="chart-container" id="container-${tf}"></div>
+    <div class="panel-updated" id="updated-${tf}">—</div>
+  `;
+  document.getElementById('chartGrid').appendChild(panel);
+
+  document.getElementById('sigToggle-' + tf).addEventListener('click', () => {
+    toggleSignalText(tf);
+  });
+
+  const row = document.getElementById('stratRow-' + tf);
+  STRATEGY_DEFS.forEach(def => {
+    const btn = document.createElement('button');
+    btn.className = 'strat-mini-btn';
+    btn.style.setProperty('--strat-color', def.color);
+    btn.textContent = def.label;
+    btn.title = def.full + ' — tap to plot live signals with SL/TP on this chart';
+    btn.addEventListener('click', () => toggleStrategy(tf, def.key, btn));
+    row.appendChild(btn);
   });
 }
 
-function initChartInstance(combo){
-  const containerEl = document.getElementById(`chart-${combo.id}`);
-  const chart = LightweightCharts.createChart(containerEl, {
-    layout: { background: { color: '#0a0c0f' }, textColor: '#8a8f98', fontFamily: "'JetBrains Mono', monospace", fontSize: 10 },
-    grid: { vertLines: { color: '#161a20' }, horzLines: { color: '#161a20' } },
-    rightPriceScale: { borderColor: '#22262e' },
-    timeScale: { borderColor: '#22262e', timeVisible: true, secondsVisible: false, rightOffset: 4 },
-    crosshair: { mode: LightweightCharts.CrosshairMode.Normal },
-    autoSize: true,
+// Toggle a single strategy's signals on/off for one timeframe's chart
+function toggleStrategy(tf, key, btn) {
+  const s = state[tf];
+  s.strategyEnabled[key] = !s.strategyEnabled[key];
+  btn.classList.toggle('active', s.strategyEnabled[key]);
+  applyMarkerVisibility(tf);
+  refreshStrategyPriceLines(tf);
+  renderActiveStrategyInfo(tf);
+}
+
+// Plain-text Entry/SL/TP readout for every enabled strategy on this chart —
+// always visible, no need to hover or zoom into the chart itself.
+function renderActiveStrategyInfo(tf) {
+  const s = state[tf];
+  const box = document.getElementById('stratInfo-' + tf);
+  if (!box) return;
+  const rows = [];
+  STRATEGY_DEFS.forEach(def => {
+    if (!s.strategyEnabled[def.key]) return;
+    const arr = s.strategySignals[def.key] || [];
+    const last = arr.length ? arr[arr.length - 1] : null;
+    if (!last) {
+      rows.push(`
+        <div class="strat-info-row">
+          <span class="strat-info-tag" style="background:${def.color}">${def.label}</span>
+          <span class="strat-info-none">watching for a ${def.full} signal…</span>
+        </div>`);
+    } else {
+      rows.push(`
+        <div class="strat-info-row">
+          <span class="strat-info-tag" style="background:${def.color}">${def.label}</span>
+          <span class="strat-info-dir ${last.type}">${last.type.toUpperCase()}</span>
+          <span class="strat-info-vals">
+            <span class="lbl-entry">Entry <b>$${last.entry.toFixed(2)}</b></span>
+            <span class="lbl-sl">SL <b>$${last.sl.toFixed(2)}</b></span>
+            <span class="lbl-tp">TP <b>$${last.tp.toFixed(2)}</b></span>
+          </span>
+        </div>`);
+    }
+  });
+  box.innerHTML = rows.join('');
+}
+
+function initChart(tf) {
+  const s = state[tf];
+  const container = document.getElementById('container-' + tf);
+  s.container = container;
+
+  s.chart = LightweightCharts.createChart(container, {
+    width: container.clientWidth,
+    height: container.clientHeight,
+    layout: {
+      background: { type: 'solid', color: '#11151c' },
+      textColor: '#c9d3e0',
+      fontFamily: "'IBM Plex Mono', monospace",
+    },
+    grid: {
+      vertLines: { color: '#1a2029' },
+      horzLines: { color: '#1a2029' },
+    },
+    crosshair: {
+      mode: LightweightCharts.CrosshairMode.Normal,
+    },
+    rightPriceScale: {
+      borderColor: '#232b37',
+    },
+    timeScale: {
+      borderColor: '#232b37',
+      timeVisible: true,
+      secondsVisible: false,
+    },
   });
 
-  const candleSeries = chart.addCandlestickSeries({
-    upColor: '#2ecc71', downColor: '#e74c3c',
-    borderUpColor: '#2ecc71', borderDownColor: '#e74c3c',
-    wickUpColor: '#2ecc71', wickDownColor: '#e74c3c',
+  s.candlestickSeries = s.chart.addCandlestickSeries({
+    upColor: '#3ecf8e',
+    downColor: '#ef5b6b',
+    borderUpColor: '#3ecf8e',
+    borderDownColor: '#ef5b6b',
+    wickUpColor: '#3ecf8e',
+    wickDownColor: '#ef5b6b',
   });
 
-  const volumeSeries = chart.addHistogramSeries({
+  s.volumeSeries = s.chart.addHistogramSeries({
     priceFormat: { type: 'volume' },
-    priceScaleId: 'vol',
-    color: '#3a3f47',
+    priceScaleId: 'volume',
   });
-  chart.priceScale('vol').applyOptions({ scaleMargins: { top: 0.82, bottom: 0 } });
+  s.chart.priceScale('volume').applyOptions({
+    scaleMargins: { top: 0.8, bottom: 0 },
+  });
 
-  instances[combo.id] = {
-    chart, candleSeries, volumeSeries,
-    candles: [], markers: [], symbol: combo.symbol, interval: combo.interval, lastMarkerTime: 0,
-    name: combo.name, tfLabel: combo.tfLabel
-  };
+  s.ema9Series = s.chart.addLineSeries({ color: '#f3cf7f', lineWidth: 1, title: 'EMA 9' });
+  s.ema21Series = s.chart.addLineSeries({ color: '#e0895a', lineWidth: 1, title: 'EMA 21' });
+  s.ema50Series = s.chart.addLineSeries({ color: '#8f6f3a', lineWidth: 2, title: 'EMA 50' });
+  s.vwapSeries = s.chart.addLineSeries({ color: '#59a5e8', lineWidth: 1, lineStyle: LightweightCharts.LineStyle.Dashed, title: 'VWAP' });
+}
 
-  chart.subscribeCrosshairMove(param => {
-    const box = document.getElementById(`ohlc-${combo.id}`);
-    if (!param.time || !param.seriesData.get(candleSeries)){ box.style.display='none'; return; }
-    const d = param.seriesData.get(candleSeries);
-    box.style.display = 'flex';
-    document.getElementById(`o-${combo.id}`).textContent = fmtPrice(d.open);
-    document.getElementById(`h-${combo.id}`).textContent = fmtPrice(d.high);
-    document.getElementById(`l-${combo.id}`).textContent = fmtPrice(d.low);
-    document.getElementById(`c-${combo.id}`).textContent = fmtPrice(d.close);
+window.addEventListener('resize', () => {
+  TIMEFRAMES.forEach(tf => {
+    const s = state[tf];
+    if (s.chart && s.container) {
+      s.chart.applyOptions({ width: s.container.clientWidth, height: s.container.clientHeight });
+    }
+  });
+});
+
+/* ============================================================
+   2. DATA CALCULATIONS & TECHNICAL INDICATORS
+   ============================================================ */
+function calculateEMA(data, period) {
+  if (!data || data.length === 0) return [];
+  const k = 2 / (period + 1);
+  let emaData = [];
+  let prevEMA = data[0].close;
+
+  for (let i = 0; i < data.length; i++) {
+    const close = data[i].close;
+    prevEMA = (i === 0) ? close : (close * k) + (prevEMA * (1 - k));
+    emaData.push({ time: data[i].time, value: prevEMA });
+  }
+  return emaData;
+}
+
+function calculateVWAP(data) {
+  if (!data || data.length === 0) return [];
+  let cumPV = 0;
+  let cumVol = 0;
+  return data.map(c => {
+    const typicalPrice = (c.high + c.low + c.close) / 3;
+    cumPV += typicalPrice * c.volume;
+    cumVol += c.volume;
+    return { time: c.time, value: cumVol === 0 ? typicalPrice : cumPV / cumVol };
   });
 }
 
-function recomputeMarkers(inst, isLiveUpdate = false){
-  const candles = inst.candles;
+/* ============================================================
+   3. SWEEPS, OPERATOR FOOTPRINTS & MARKERS GENERATION
+   ============================================================ */
+function processMarkersAndOverlays(tf) {
+  const s = state[tf];
+  const candles = s.candles;
+  if (candles.length < 20) return;
+
+  const markers = [];
   const N = candles.length;
-  const lookback = 15; 
-  let markers = [];
-  let newEventType = null; // 'bull' | 'bear' | 'vol' | null — for the latest closed candle only
 
-  for (let i = lookback; i < N; i++){
+  for (let i = 5; i < N; i++) {
     const c = candles[i];
-    const window = candles.slice(i - lookback, i);
-    
-    const priorHigh = Math.max(...window.map(x => x.high));
-    const priorLow = Math.min(...window.map(x => x.low));
-    const avgVol = window.reduce((s,x) => s + x.volume, 0) / window.length;
+    const body = Math.abs(c.close - c.open);
+    const upperWick = c.high - Math.max(c.open, c.close);
+    const lowerWick = Math.min(c.open, c.close) - c.low;
 
-    let eventType = null;
-
-    // 1. Bullish Sweep
-    if (c.low < priorLow && c.close > priorLow) {
-      markers.push({ time: c.time, position: 'belowBar', color: '#2ecc71', shape: 'arrowUp', text: 'BSWP' });
-      eventType = 'bull';
-    } 
-    // 2. Bearish Sweep
-    else if (c.high > priorHigh && c.close < priorHigh) {
-      markers.push({ time: c.time, position: 'aboveBar', color: '#e74c3c', shape: 'arrowDown', text: 'SSWP' });
-      eventType = 'bear';
-    } 
-    // 3. Volume Spike
-    else if (avgVol > 0 && c.volume > avgVol * 2.2){
-      markers.push({ time: c.time, position: c.close >= c.open ? 'belowBar' : 'aboveBar', color: '#f5a623', shape: 'circle', text: 'VOL' });
-      eventType = 'vol';
+    // 1. LIQUIDITY SWEEP DETECTION
+    let swingHigh = -Infinity, swingLow = Infinity;
+    for (let j = i - 5; j < i; j++) {
+      swingHigh = Math.max(swingHigh, candles[j].high);
+      swingLow = Math.min(swingLow, candles[j].low);
     }
 
-    // New event on the latest candle
-    if(eventType && i === N - 1 && isLiveUpdate && inst.lastMarkerTime !== c.time){
-      inst.lastMarkerTime = c.time;
-      newEventType = eventType;
+    const sweptHigh = c.high > swingHigh && c.close < swingHigh;
+    const sweptLow = c.low < swingLow && c.close > swingLow;
+
+    if (sweptHigh) {
+      const text = 'SWEEP (Highs)';
+      markers.push({ time: c.time, position: 'aboveBar', color: '#8b7cf6', shape: 'circle', text });
+      notifyIfNew(tf, 'sweep', text, c);
+    } else if (sweptLow) {
+      const text = 'SWEEP (Lows)';
+      markers.push({ time: c.time, position: 'belowBar', color: '#8b7cf6', shape: 'circle', text });
+      notifyIfNew(tf, 'sweep', text, c);
+    }
+
+    // 2. OPERATOR FOOTPRINT (Institutional wick/volume absorption)
+    const isHighVolume = c.volume > (candles.slice(Math.max(0, i - 10), i).reduce((a, b) => a + b.volume, 0) / 10) * 1.8;
+    const isAbsorbedWick = (lowerWick > body * 2.2) || (upperWick > body * 2.2);
+
+    if (isHighVolume && isAbsorbedWick) {
+      const isBullishFootprint = lowerWick > upperWick;
+      const text = isBullishFootprint ? 'FOOTPRINT (Accum)' : 'FOOTPRINT (Distrib)';
+      markers.push({ time: c.time, position: isBullishFootprint ? 'belowBar' : 'aboveBar', color: '#e0b25a', shape: 'square', text });
+      notifyIfNew(tf, 'footprint', text, c);
+    }
+
+    // 3. RULE-BASED BUY / SELL / SL SIGNALS
+    if (i > 1) {
+      if ((sweptLow || (isHighVolume && lowerWick > body * 2)) && c.close > c.open) {
+        const slPrice = (c.low * 0.999).toFixed(2);
+        const text = `BUY @ $${c.close.toFixed(1)} | SL: $${slPrice}`;
+        markers.push({ time: c.time, position: 'belowBar', color: '#3ecf8e', shape: 'arrowUp', text });
+        notifyIfNew(tf, 'buy', text, c);
+      }
+
+      if ((sweptHigh || (isHighVolume && upperWick > body * 2)) && c.close < c.open) {
+        const slPrice = (c.high * 1.001).toFixed(2);
+        const text = `SELL @ $${c.close.toFixed(1)} | SL: $${slPrice}`;
+        markers.push({ time: c.time, position: 'aboveBar', color: '#ef5b6b', shape: 'arrowDown', text });
+        notifyIfNew(tf, 'sell', text, c);
+      }
     }
   }
 
-  inst.candleSeries.setMarkers(markers.sort((a,b) => a.time - b.time));
+  s.baseMarkers = markers;
+  s.isInitialLoad = false; // history has been processed once; future signals will alert
+}
 
-  if(newEventType === 'bull' || newEventType === 'bear'){
-    playBeepSequence(5, 1046.50, 'sine'); // 5 consecutive beeps for BSWP/SSWP
-    notifySweep(inst, newEventType === 'bull');
+// Renders markers according to this chart's "hide signal text" toggle:
+// when off, shapes/arrows stay but the text captions are stripped.
+function applyMarkerVisibility(tf) {
+  const s = state[tf];
+  let combined = [...(s.baseMarkers || []), ...buildStrategyMarkers(tf)];
+  combined.sort((a, b) => a.time - b.time);
+  if (!s.showSignalText) combined = combined.map(m => ({ ...m, text: '' }));
+  s.lastMarkers = combined;
+  s.candlestickSeries.setMarkers(combined);
+}
+
+function toggleSignalText(tf) {
+  const s = state[tf];
+  s.showSignalText = !s.showSignalText;
+  applyMarkerVisibility(tf);
+  const btn = document.getElementById('sigToggle-' + tf);
+  btn.classList.toggle('off', !s.showSignalText);
+  btn.innerHTML = s.showSignalText ? '🏷️ Signals' : '🏷️ Signals (hidden)';
+}
+
+/* ============================================================
+   3c. BREAKOUT SCALPING — LIVE DETECTION LOGIC
+   Scans the candle series and produces a list of
+   { time, type: 'buy'|'sell', entry, sl, tp } signals.
+   (Momentum/News, Mean Reversion, EMA/VWAP, and Order Flow logic
+   have been removed — Breakout is the only active strategy button.)
+   ============================================================ */
+function avgRange(candles, i, look) {
+  let sum = 0, count = 0;
+  for (let j = Math.max(0, i - look); j < i; j++) { sum += (candles[j].high - candles[j].low); count++; }
+  return count ? sum / count : 0;
+}
+function avgVol(candles, i, look) {
+  let sum = 0, count = 0;
+  for (let j = Math.max(0, i - look); j < i; j++) { sum += candles[j].volume; count++; }
+  return count ? sum / count : 0;
+}
+
+function computeStrategySignals(tf) {
+  const s = state[tf];
+  const candles = s.candles;
+  const N = candles.length;
+  const signals = { breakout: [] };
+  s.strategySignals = signals;
+  if (N < 25) return;
+
+  const period = 20;
+
+  for (let i = period + 1; i < N; i++) {
+    const c = candles[i];
+    const ar20 = avgRange(candles, i, 20);
+
+    // ---- BREAKOUT SCALPING ----
+    // Break of prior 20-bar range high/low, confirmed by above-average volume.
+    let rangeHigh = -Infinity, rangeLow = Infinity;
+    for (let j = i - 20; j < i; j++) { rangeHigh = Math.max(rangeHigh, candles[j].high); rangeLow = Math.min(rangeLow, candles[j].low); }
+    const volConfirm = c.volume > avgVol(candles, i, 20) * 1.3;
+    if (c.close > rangeHigh && volConfirm) {
+      const entry = c.close, sl = Math.min(c.low, rangeHigh) - ar20 * 0.25, risk = entry - sl;
+      signals.breakout.push({ time: c.time, type: 'buy', entry, sl, tp: entry + risk * 2, i });
+    } else if (c.close < rangeLow && volConfirm) {
+      const entry = c.close, sl = Math.max(c.high, rangeLow) + ar20 * 0.25, risk = sl - entry;
+      signals.breakout.push({ time: c.time, type: 'sell', entry, sl, tp: entry - risk * 2, i });
+    }
   }
-  // VOL spikes stay silent / no notification, per current setup.
 }
 
-async function fetchKlines(symbol, interval, limit, market){
-  const base = market === 'futures' ? REST_BASE_FUTURES : REST_BASE_SPOT;
-  const url = `${base}/klines?symbol=${symbol}&interval=${interval}&limit=${limit}`;
-  const res = await fetch(url);
-  if (!res.ok) throw new Error(`klines error`);
-  return res.json();
+// Turn each enabled strategy's signal list into chart markers (arrow + entry/SL/TP text)
+function buildStrategyMarkers(tf) {
+  const s = state[tf];
+  const markers = [];
+  STRATEGY_DEFS.forEach(def => {
+    if (!s.strategyEnabled[def.key]) return;
+    (s.strategySignals[def.key] || []).forEach(sig => {
+      const text = `[${def.label}] ${sig.type.toUpperCase()} @ $${sig.entry.toFixed(2)} | SL $${sig.sl.toFixed(2)} | TP $${sig.tp.toFixed(2)}`;
+      markers.push({
+        time: sig.time,
+        position: sig.type === 'buy' ? 'belowBar' : 'aboveBar',
+        color: def.color,
+        shape: sig.type === 'buy' ? 'arrowUp' : 'arrowDown',
+        text
+      });
+    });
+  });
+  return markers;
 }
 
-async function loadDataForCombo(combo){
-  const inst = instances[combo.id];
+// Draw live SL/TP/Entry horizontal price lines on the chart for each enabled
+// strategy's MOST RECENT signal — this is what makes SL/TP visible in real time.
+function refreshStrategyPriceLines(tf) {
+  const s = state[tf];
+  STRATEGY_DEFS.forEach(def => {
+    const old = s.strategyPriceLines[def.key];
+    if (old) {
+      if (old.entry) s.candlestickSeries.removePriceLine(old.entry);
+      if (old.sl) s.candlestickSeries.removePriceLine(old.sl);
+      if (old.tp) s.candlestickSeries.removePriceLine(old.tp);
+      s.strategyPriceLines[def.key] = null;
+    }
+    if (!s.strategyEnabled[def.key]) return;
+    const arr = s.strategySignals[def.key];
+    if (!arr || !arr.length) return;
+    const last = arr[arr.length - 1];
+    s.strategyPriceLines[def.key] = {
+      entry: s.candlestickSeries.createPriceLine({
+        price: last.entry, color: def.color, lineWidth: 1,
+        lineStyle: LightweightCharts.LineStyle.Dotted, axisLabelVisible: true, title: `${def.label} ENTRY`
+      }),
+      sl: s.candlestickSeries.createPriceLine({
+        price: last.sl, color: '#ef5b6b', lineWidth: 1,
+        lineStyle: LightweightCharts.LineStyle.Dashed, axisLabelVisible: true, title: `${def.label} SL`
+      }),
+      tp: s.candlestickSeries.createPriceLine({
+        price: last.tp, color: '#3ecf8e', lineWidth: 1,
+        lineStyle: LightweightCharts.LineStyle.Dashed, axisLabelVisible: true, title: `${def.label} TP`
+      })
+    };
+  });
+}
+
+/* ============================================================
+   3b. NOTIFICATION SYSTEM
+   ============================================================ */
+function notifyIfNew(tf, type, text, c) {
+  const s = state[tf];
+  const key = c.time + '|' + text;
+  if (s.seenMarkerKeys.has(key)) return;
+  s.seenMarkerKeys.add(key);
+
+  notifications.unshift({
+    id: tf + '-' + key,
+    tf,
+    type,
+    text,
+    time: c.time,
+    price: c.close,
+    createdAt: Date.now()
+  });
+  if (notifications.length > 50) notifications.length = 50;
+
+  if (!s.isInitialLoad) {
+    unreadCount++;
+    updateNotifBadge();
+  }
+  renderNotifications();
+}
+
+function updateNotifBadge() {
+  const badge = document.getElementById('notifBadge');
+  if (unreadCount > 0) {
+    badge.textContent = unreadCount > 99 ? '99+' : unreadCount;
+    badge.classList.add('show');
+  } else {
+    badge.classList.remove('show');
+  }
+}
+
+function renderNotifications() {
+  const list = document.getElementById('notifList');
+  if (!notifications.length) {
+    list.innerHTML = '<div class="notif-empty">No signals yet — watching the tape…</div>';
+    return;
+  }
+  list.innerHTML = notifications.map(n => `
+    <div class="notif-item" data-tf="${n.tf}" data-time="${n.time}">
+      <span class="notif-dot ${n.type}"></span>
+      <div class="notif-body">
+        <div class="notif-tf">${n.tf.toUpperCase()}</div>
+        <div class="notif-text">${n.text}</div>
+        <div class="notif-time">${new Date(n.time * 1000).toLocaleString()}</div>
+      </div>
+    </div>
+  `).join('');
+
+  list.querySelectorAll('.notif-item').forEach(el => {
+    el.addEventListener('click', () => {
+      jumpToTime(el.getAttribute('data-tf'), parseInt(el.getAttribute('data-time'), 10));
+      document.getElementById('notifPanel').classList.remove('open');
+    });
+  });
+}
+
+function intervalToSeconds(tf) {
+  const map = { '5m': 300, '15m': 900, '1h': 3600, '4h': 14400, '1d': 86400 };
+  return map[tf] || 900;
+}
+
+// Tap a notification -> scroll to that timeframe's panel and center its chart on that candle
+function jumpToTime(tf, targetTime) {
+  const s = state[tf];
+  if (!s.chart) return;
+  const secs = intervalToSeconds(tf);
+  const half = 30;
+  s.chart.timeScale().setVisibleRange({
+    from: targetTime - half * secs,
+    to: targetTime + half * secs
+  });
+  const panel = document.getElementById('panel-' + tf);
+  if (panel) panel.scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+
+document.getElementById('notifBell').addEventListener('click', (e) => {
+  e.stopPropagation();
+  const panel = document.getElementById('notifPanel');
+  panel.classList.toggle('open');
+  if (panel.classList.contains('open')) {
+    unreadCount = 0;
+    updateNotifBadge();
+  }
+});
+document.addEventListener('click', (e) => {
+  const panel = document.getElementById('notifPanel');
+  const bell = document.getElementById('notifBell');
+  if (panel.classList.contains('open') && !panel.contains(e.target) && e.target !== bell) {
+    panel.classList.remove('open');
+  }
+});
+
+function updateChartData(tf) {
+  const s = state[tf];
+  s.candlestickSeries.setData(s.candles.map(c => ({
+    time: c.time, open: c.open, high: c.high, low: c.low, close: c.close
+  })));
+
+  s.volumeSeries.setData(s.candles.map(c => ({
+    time: c.time,
+    value: c.volume,
+    color: c.close >= c.open ? 'rgba(62, 207, 142, 0.4)' : 'rgba(239, 91, 107, 0.4)'
+  })));
+
+  s.ema9Series.setData(calculateEMA(s.candles, 9));
+  s.ema21Series.setData(calculateEMA(s.candles, 21));
+  s.ema50Series.setData(calculateEMA(s.candles, 50));
+  s.vwapSeries.setData(calculateVWAP(s.candles));
+
+  processMarkersAndOverlays(tf);
+  computeStrategySignals(tf);
+  applyMarkerVisibility(tf);
+  refreshStrategyPriceLines(tf);
+  renderActiveStrategyInfo(tf);
+  updateHeader(tf);
+}
+
+/* ============================================================
+   4. BINANCE REST & WEBSOCKET INTEGRATION (per timeframe)
+   ============================================================ */
+async function fetchKlines(tf) {
+  setStatus(tf, 'connecting');
   try {
-    const raw = await fetchKlines(combo.symbol, combo.interval, TOTAL_CANDLES, combo.market);
-    
-    inst.candles = raw.map(k => ({
-      time: toBarTime(k[0]),
-      open: parseFloat(k[1]), high: parseFloat(k[2]),
-      low: parseFloat(k[3]), close: parseFloat(k[4]),
-      volume: parseFloat(k[5]),
-    })).sort((a,b) => a.time - b.time);
+    const url = `https://api.binance.com/api/v3/klines?symbol=${SYMBOL.toUpperCase()}&interval=${tf}&limit=${MAX_CANDLES}`;
+    const res = await fetch(url);
+    if (!res.ok) throw new Error('Network error loading klines');
+    const raw = await res.json();
 
-    inst.candleSeries.setData(inst.candles.map(c=>({time:c.time, open:c.open, high:c.high, low:c.low, close:c.close})));
-    inst.volumeSeries.setData(inst.candles.map(c=>({time:c.time, value:c.volume, color: c.close>=c.open ? '#2ecc7155' : '#e74c3c55'})));
+    state[tf].candles = raw.map(k => ({
+      time: Math.floor(k[0] / 1000),
+      open: parseFloat(k[1]),
+      high: parseFloat(k[2]),
+      low: parseFloat(k[3]),
+      close: parseFloat(k[4]),
+      volume: parseFloat(k[5])
+    }));
 
-    recomputeMarkers(inst, false);
-    inst.chart.timeScale().fitContent();
+    updateChartData(tf);
+    state[tf].chart.timeScale().fitContent();
+    setStatus(tf, 'live');
+    connectWebSocket(tf);
+  } catch (err) {
+    console.error('API Error (' + tf + '):', err);
+    setStatus(tf, 'sim');
+  }
+}
 
-    const last = inst.candles[inst.candles.length - 1];
-    if(last){
-      const pEl = document.getElementById(`price-${combo.id}`);
-      pEl.textContent = fmtPrice(last.close);
-      pEl.className = 'stat-val ' + (last.close >= last.open ? 'up' : 'down');
+function connectWebSocket(tf) {
+  const s = state[tf];
+  if (s.ws) {
+    s.ws.onclose = null;
+    s.ws.close();
+  }
+
+  const wsUrl = `wss://stream.binance.com:9443/ws/${SYMBOL}@kline_${tf}`;
+  s.ws = new WebSocket(wsUrl);
+
+  s.ws.onmessage = (event) => {
+    const message = JSON.parse(event.data);
+    const k = message.k;
+
+    const candleObj = {
+      time: Math.floor(k.t / 1000),
+      open: parseFloat(k.o),
+      high: parseFloat(k.h),
+      low: parseFloat(k.l),
+      close: parseFloat(k.c),
+      volume: parseFloat(k.v)
+    };
+
+    const lastIdx = s.candles.findIndex(c => c.time === candleObj.time);
+    if (lastIdx !== -1) {
+      s.candles[lastIdx] = candleObj;
+    } else {
+      s.candles.push(candleObj);
+      if (s.candles.length > MAX_CANDLES) s.candles.shift();
     }
-  } catch(e) {
-    console.error(e);
-  }
+
+    updateChartData(tf);
+  };
+
+  s.ws.onerror = () => setStatus(tf, 'sim');
+  s.ws.onclose = () => {
+    setTimeout(() => {
+      if (s.ws.readyState === WebSocket.CLOSED) connectWebSocket(tf);
+    }, 5000);
+  };
 }
 
-// Crypto combos are split across two Binance products: SPOT (PAXG/BTC/ETH) and
-// USDS-M FUTURES (XPT — platinum has no spot pair). Each product has its own WS
-// host, so we run two independent multiplexed connections and merge their status
-// into the single header indicator.
-let spotWsConnected = false;
-let futuresWsConnected = false;
+/* ============================================================
+   5. UI CONTROLS & UPDATES
+   ============================================================ */
+function updateHeader(tf) {
+  const s = state[tf];
+  if (!s.candles.length) return;
+  const last = s.candles[s.candles.length - 1];
+  const first = s.candles[0];
 
-function updateGlobalStatus(){
-  const el = document.getElementById('global-status');
-  if (!el) return;
-  const hasFutures = COMBOS.some(c => c.market === 'futures');
-  const futuresOk = !hasFutures || futuresWsConnected;
-  if (spotWsConnected && futuresOk){
-    el.textContent = '🟢 LIVE CONNECTED';
-    el.style.color = 'var(--green)';
-  } else if (spotWsConnected || futuresWsConnected){
-    el.textContent = '🟡 PARTIAL CONNECTION...';
-    el.style.color = 'var(--amber)';
+  document.getElementById('price-' + tf).textContent = '$' + last.close.toFixed(2);
+  const pct = ((last.close - first.open) / first.open) * 100;
+  const chgEl = document.getElementById('chg-' + tf);
+  chgEl.textContent = (pct >= 0 ? '+' : '') + pct.toFixed(2) + '%';
+  chgEl.className = 'chg ' + (pct >= 0 ? 'up' : 'down');
+  document.getElementById('updated-' + tf).textContent = 'Last update: ' + new Date().toLocaleTimeString();
+}
+
+function setStatus(tf, statusVal) {
+  const el = document.getElementById('status-' + tf);
+  if (statusVal === 'live') {
+    el.className = 'badge live';
+    el.innerHTML = '<span class="pulse"></span>LIVE';
+  } else if (statusVal === 'connecting') {
+    el.className = 'badge connecting';
+    el.innerHTML = '<span class="pulse"></span>CONNECTING…';
   } else {
-    el.textContent = '🔴 RECONNECTING...';
-    el.style.color = 'var(--red)';
+    el.className = 'badge sim';
+    el.innerHTML = 'OFFLINE';
   }
 }
 
-// Shared by spot + futures kline streams — both wrap payloads identically as
-// {"stream":"<name>","data":{k:{...}}}, so one handler covers both markets.
-function handleKlineStreamMessage(msg, comboByStream){
-  const data = JSON.parse(msg.data);
-  if (!data.data) return;
+const strategyMeta = {
+  ema: { label: 'EMAs (9/21/50)', color: '#f3cf7f', getSeries: tf => [state[tf].ema9Series, state[tf].ema21Series, state[tf].ema50Series] },
+  vwap: { label: 'VWAP Reference', color: '#59a5e8', getSeries: tf => [state[tf].vwapSeries] },
+  volume: { label: 'Volume Pane', color: '#3ecf8e', getSeries: tf => [state[tf].volumeSeries] }
+};
 
-  const streamName = data.stream;
-  const k = data.data.k;
+const controlsEl = document.getElementById('controls');
+Object.keys(strategyMeta).forEach(key => {
+  const meta = strategyMeta[key];
+  const chip = document.createElement('div');
+  chip.className = 'chip';
+  chip.style.background = meta.color;
+  chip.style.color = '#0a0d12';
+  chip.innerHTML = `<span class="dot" style="background:#0a0d12"></span>${meta.label}`;
 
-  const combo = comboByStream[streamName];
-  if (!combo) return;
+  let visible = true;
+  chip.addEventListener('click', () => {
+    visible = !visible;
+    TIMEFRAMES.forEach(tf => {
+      meta.getSeries(tf).forEach(series => series && series.applyOptions({ visible }));
+    });
+    chip.style.background = visible ? meta.color : 'var(--panel)';
+    chip.style.color = visible ? '#0a0d12' : 'var(--muted)';
+  });
+  controlsEl.appendChild(chip);
+});
 
-  const inst = instances[combo.id];
-  const bar = {
-    time: toBarTime(k.t),
-    open: parseFloat(k.o), high: parseFloat(k.h),
-    low: parseFloat(k.l), close: parseFloat(k.c),
-    volume: parseFloat(k.v),
-  };
+document.getElementById('legend').innerHTML = `
+  <div class="leg-item"><div class="lt"><div class="tri up"></div>BUY Marker</div>Triggered on bullish wicks or sweeps with green confirmation. Displays entry price &amp; Stop-Loss (SL).</div>
+  <div class="leg-item"><div class="lt"><div class="tri down"></div>SELL Marker</div>Triggered on bearish sweeps or footprint wicks with red confirmation. Displays entry price &amp; Stop-Loss (SL).</div>
+  <div class="leg-item"><div class="lt"><span class="swatch" style="background:#8b7cf6"></span>Liquidity Sweep</div>Purple circle above/below key highs/lows where stop-liquidity is taken before price reverses.</div>
+  <div class="leg-item"><div class="lt"><span class="swatch" style="background:#e0b25a"></span>Operator Footprint</div>Gold square marking high-volume institutional absorption on candle wicks.</div>
+  <div class="leg-item"><div class="lt"><span class="swatch" style="background:#f3cf7f"></span>BRK Strategy Button</div>Tap "BRK" under a chart's header to plot live Breakout signals on THAT timeframe — arrows on the chart plus dashed Entry/SL/TP price lines that update in real time.</div>
+`;
 
-  const lastIdx = inst.candles.length - 1;
-  if (lastIdx >= 0 && inst.candles[lastIdx].time === bar.time){
-    inst.candles[lastIdx] = bar;
-  } else {
-    inst.candles.push(bar);
-    if (inst.candles.length > TOTAL_CANDLES) inst.candles.shift();
+/* ============================================================
+   Breakout Scalping — Entry / SL / TP card
+   (Only active strategy — others removed per request)
+   ============================================================ */
+const strategies = [
+  {
+    name: '1. Breakout Scalping (BRK)',
+    desc: 'Live logic: tracks the prior 20-candle range high/low. A close beyond that range, confirmed by volume ≥1.3× the 20-bar average, fires the signal. Tap "BRK" on any chart to plot it live.',
+    entry: 'Close beyond 20-bar range high/low',
+    sl: 'Range edge ± 0.25 × avg range(20)',
+    tp: 'Entry ± 2 × risk',
+    rr: '1 : 2'
   }
+];
 
-  inst.candleSeries.update({time:bar.time, open:bar.open, high:bar.high, low:bar.low, close:bar.close});
-  inst.volumeSeries.update({time:bar.time, value:bar.volume, color: bar.close>=bar.open?'#2ecc7155':'#e74c3c55'});
+function renderStrategies() {
+  const grid = document.getElementById('stratGrid');
+  grid.innerHTML = strategies.map((s, i) => `
+    <div class="strat-card">
+      <button class="strat-btn" data-idx="${i}">
+        <span>${s.name}</span>
+        <span class="chev">▼</span>
+      </button>
+      <div class="strat-body" id="stratBody-${i}">
+        <div class="strat-desc">${s.desc}</div>
+        <div class="strat-levels">
+          <div class="strat-lvl entry"><div class="lbl">ENTRY</div><div class="val">${s.entry}</div></div>
+          <div class="strat-lvl sl"><div class="lbl">SL</div><div class="val">${s.sl}</div></div>
+          <div class="strat-lvl tp"><div class="lbl">TP</div><div class="val">${s.tp}</div></div>
+        </div>
+        <div class="strat-rr">Risk:Reward — <b>${s.rr}</b></div>
+      </div>
+    </div>
+  `).join('');
 
-  const pEl = document.getElementById(`price-${combo.id}`);
-  pEl.textContent = fmtPrice(bar.close);
-  pEl.className = 'stat-val ' + (bar.close >= bar.open ? 'up' : 'down');
-
-  // Recompute & alert sound on candle updates / candle close
-  recomputeMarkers(inst, true);
+  grid.querySelectorAll('.strat-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const idx = btn.getAttribute('data-idx');
+      btn.classList.toggle('open');
+      document.getElementById('stratBody-' + idx).classList.toggle('open');
+    });
+  });
 }
+renderStrategies();
 
-function connectMultiWS(){
-  connectSpotWS();
-  connectFuturesWS();
-}
-
-function connectSpotWS(){
-  const spotCombos = COMBOS.filter(c => c.market !== 'futures');
-  if (!spotCombos.length) return;
-
-  // One stream per (asset, timeframe) combo, e.g. btcusdt@kline_1m, btcusdt@kline_5m, ...
-  const streamNames = spotCombos.map(c => `${c.symbol.toLowerCase()}@kline_${c.interval}`);
-  const comboByStream = {};
-  spotCombos.forEach((c, idx) => { comboByStream[streamNames[idx]] = c; });
-
-  const streams = streamNames.join('/');
-  const wsUrl = `wss://stream.binance.com:9443/stream?streams=${streams}`;
-  const ws = new WebSocket(wsUrl);
-
-  ws.onopen = () => {
-    spotWsConnected = true;
-    updateGlobalStatus();
-  };
-
-  ws.onmessage = (msg) => handleKlineStreamMessage(msg, comboByStream);
-
-  ws.onclose = () => {
-    spotWsConnected = false;
-    updateGlobalStatus();
-    setTimeout(connectSpotWS, 3000);
-  };
-}
-
-function connectFuturesWS(){
-  const futuresCombos = COMBOS.filter(c => c.market === 'futures');
-  if (!futuresCombos.length) return;
-
-  const streamNames = futuresCombos.map(c => `${c.symbol.toLowerCase()}@kline_${c.interval}`);
-  const comboByStream = {};
-  futuresCombos.forEach((c, idx) => { comboByStream[streamNames[idx]] = c; });
-
-  const streams = streamNames.join('/');
-  // Kline is a "Market" data stream on Binance USDS-M Futures, which (as of the
-  // 2026-04-23 migration) must go through the routed /market base — the old
-  // unrouted fstream.binance.com/stream URL no longer carries kline data.
-  const wsUrl = `wss://fstream.binance.com/market/stream?streams=${streams}`;
-  const ws = new WebSocket(wsUrl);
-
-  ws.onopen = () => {
-    futuresWsConnected = true;
-    updateGlobalStatus();
-  };
-
-  ws.onmessage = (msg) => handleKlineStreamMessage(msg, comboByStream);
-
-  ws.onclose = () => {
-    futuresWsConnected = false;
-    updateGlobalStatus();
-    setTimeout(connectFuturesWS, 3000);
-  };
-}
-
-
-(async function initApp(){
-  requestNotificationPermission();
-
-  createChartCards();
-  COMBOS.forEach(combo => initChartInstance(combo));
-
-  await Promise.all(COMBOS.map(combo => loadDataForCombo(combo)));
-  connectMultiWS();
-})();
+/* ============================================================
+   Initialize App: build a panel + chart per timeframe, then load data
+   ============================================================ */
+TIMEFRAMES.forEach(tf => createPanel(tf));
+TIMEFRAMES.forEach(tf => initChart(tf));
+renderNotifications();
+TIMEFRAMES.forEach(tf => fetchKlines(tf));
 </script>
 </body>
 </html>
